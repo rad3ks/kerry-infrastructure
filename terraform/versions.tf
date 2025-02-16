@@ -12,8 +12,8 @@ terraform {
     bucket                      = "kerry-terraform-state"
     key                         = "kerry/terraform.tfstate"
     region                      = "eu-central-1"
-    endpoints                   = { s3 = "https://s3.eu-central-1.hetzner.com" }
-    force_path_style           = true
+    endpoints                   = { s3 = "https://storage.hetzner.com" }
+    use_path_style             = true
     skip_credentials_validation = true
     skip_metadata_api_check    = true
     skip_region_validation     = true
