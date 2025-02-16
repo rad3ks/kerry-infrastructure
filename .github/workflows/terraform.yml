@@ -29,6 +29,8 @@ jobs:
     - name: Terraform Init
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: terraform init
 
     - name: Terraform Format
@@ -37,6 +39,8 @@ jobs:
     - name: Terraform Plan
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
       run: terraform plan -input=false
 
@@ -44,5 +48,7 @@ jobs:
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
       run: terraform apply -auto-approve -input=false
