@@ -8,15 +8,14 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket                      = "kerry-terraform-state"
-    key                         = "kerry/terraform.tfstate"
-    region                      = "eu-central-1"
-    endpoints                   = { s3 = "https://storage.hetzner.com" }
-    use_path_style             = true
-    skip_credentials_validation = true
-    skip_metadata_api_check    = true
-    skip_region_validation     = true
-    skip_requesting_account_id = true
-  }
+  # backend "s3" {
+  #   bucket                      = "kerry-terraform-state"
+  #   key                         = "terraform.tfstate"
+  #   region                      = "eu-central-1"
+  #   endpoint                    = "https://obs-eu-1.s3.hetzner.cloud"
+  #   force_path_style           = true
+  #   skip_credentials_validation = true
+  #   skip_metadata_api_check    = true
+  #   skip_region_validation     = true
+  # }
 }
