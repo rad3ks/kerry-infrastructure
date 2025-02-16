@@ -27,3 +27,22 @@ variable "ssh_public_key" {
   type        = string
   sensitive   = true
 }
+
+terraform {
+  required_providers {
+    hcloud = {
+      source  = "hetznercloud/hcloud"
+      version = "~> 1.45.0"
+    }
+  }
+}
+
+provider "hcloud" {
+  token = var.hcloud_token
+}
+
+variable "hcloud_token" {
+  description = "Hetzner Cloud API Token"
+  type        = string
+  sensitive   = true
+}
