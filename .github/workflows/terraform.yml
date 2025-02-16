@@ -2,9 +2,9 @@ name: 'Terraform'
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "staging" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "staging" ]
 
 permissions:
   contents: read
@@ -13,7 +13,7 @@ jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
 
     defaults:
       run:
@@ -42,13 +42,15 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+        TF_VAR_server_name: ${{ github.ref == 'refs/heads/main' && 'kerry-production' || 'kerry-staging' }}
       run: terraform plan -input=false
 
     - name: Terraform Apply
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+        TF_VAR_server_name: ${{ github.ref == 'refs/heads/main' && 'kerry-production' || 'kerry-staging' }}
       run: terraform apply -auto-approve -input=false
