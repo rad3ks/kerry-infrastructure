@@ -23,7 +23,7 @@ on:
       server_type:
         description: 'Server type'
         required: true
-        default: 'cpx21'
+        default: 'cx22'
         type: string
 
 permissions:
@@ -34,6 +34,11 @@ jobs:
     name: 'Terraform'
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/staging'
 
     defaults:
       run:
