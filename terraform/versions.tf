@@ -12,7 +12,7 @@ terraform {
     bucket                      = "kerry-terraform-state"
     key                         = "terraform.tfstate"
     region                      = "eu-central-1"
-    endpoint                    = "https://nbg1.your-objectstorage.com"
+    endpoints.s3                = "https://nbg1.your-objectstorage.com"
     force_path_style           = true
     skip_credentials_validation = true
     skip_metadata_api_check    = true
