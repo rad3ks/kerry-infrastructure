@@ -63,7 +63,7 @@ resource "hcloud_server" "main" {
 
   provisioner "file" {
     source      = "files/nginx.conf"
-    destination = "/etc/nginx/sites-available/default"
+    destination = "/tmp/nginx.conf"
   }
 
   provisioner "file" {
@@ -73,10 +73,16 @@ resource "hcloud_server" "main" {
 
   provisioner "remote-exec" {
     inline = [
+      "apt-get update",
+      "apt-get install -y nginx apache2-utils",
+      "mv /tmp/nginx.conf /etc/nginx/sites-available/default",
+      "ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default",
       "chmod +x /tmp/setup-auth.sh",
       "export STAGING_USERNAME='${var.staging_username}'",
       "export STAGING_PASSWORD='${var.staging_password}'",
       "/tmp/setup-auth.sh",
+      "systemctl enable nginx",
+      "systemctl start nginx",
       "systemctl restart nginx"
     ]
   }
