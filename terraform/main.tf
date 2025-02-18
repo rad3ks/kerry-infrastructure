@@ -14,7 +14,7 @@ resource "hcloud_firewall" "default" {
     protocol  = "tcp"
     port      = "22"
     source_ips = [
-      "109.173.177.150/32"  # Your home IP
+      "109.173.177.150/32" # Your home IP
     ]
   }
 
