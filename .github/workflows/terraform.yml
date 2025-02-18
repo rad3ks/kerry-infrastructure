@@ -37,15 +37,7 @@ jobs:
     - name: Terraform Init
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: "eu-central-1"
-      run: |
-        cat > backend.hcl << EOF
-        access_key = "${{ secrets.AWS_ACCESS_KEY_ID }}"
-        secret_key = "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-        EOF
-        terraform init -backend-config=backend.hcl
+      run: terraform init -backend-config=backend.hcl
 
     - name: Terraform Format
       run: terraform fmt
