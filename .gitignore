@@ -22,3 +22,6 @@ terraform.rc
 
 # Environment variables
 .env
+
+# Backend config
+backend.hcl
