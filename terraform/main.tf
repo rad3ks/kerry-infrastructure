@@ -65,7 +65,7 @@ resource "hcloud_server" "main" {
   connection {
     type        = "ssh"
     user        = "root"
-    private_key = file("~/.ssh/id_ed25519")  # Adjust path to your SSH key
+    private_key = var.ssh_private_key
     host        = self.ipv4_address
   }
 
