@@ -33,12 +33,6 @@ variable "ssh_public_key" {
   type        = string
 }
 
-variable "ssh_private_key" {
-  description = "SSH private key for server access"
-  type        = string
-  sensitive   = true
-}
-
 variable "staging_username" {
   description = "Username for staging basic auth"
   type        = string
