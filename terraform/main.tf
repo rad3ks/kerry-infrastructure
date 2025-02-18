@@ -63,37 +63,36 @@ resource "hcloud_server" "main" {
   }
 
   user_data = <<-EOF
-    #!/bin/bash
-    # Wait for cloud-init
-    while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done
+#!/bin/bash
+# Wait for cloud-init
+while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done
 
-    # Install packages
-    apt-get update
-    DEBIAN_FRONTEND=noninteractive apt-get install -y nginx apache2-utils
+# Install packages
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y nginx apache2-utils
 
-    # Configure Nginx
-    cat > /etc/nginx/sites-available/default << 'EOL'
-    server {
-        listen 80;
-        server_name staging.kerryai.app;
+# Configure Nginx
+cat > /etc/nginx/sites-available/default << 'EOL'
+server {
+    listen 80;
+    server_name staging.kerryai.app;
 
-        auth_basic "Kerry AI Staging";
-        auth_basic_user_file /etc/nginx/.htpasswd;
+    auth_basic "Kerry AI Staging";
+    auth_basic_user_file /etc/nginx/.htpasswd;
 
-        location / {
-            proxy_pass http://localhost:8000;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-        }
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
     }
-    EOL
+}
+EOL
 
-    # Setup auth
-    htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
+# Setup auth
+htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
 
-    # Start Nginx
-    systemctl enable nginx
-    systemctl start nginx
-    EOL
-  }
+# Start Nginx
+systemctl enable nginx
+systemctl start nginx
+EOF
 }
