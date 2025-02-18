@@ -5,26 +5,7 @@ on:
     branches: [ "main", "staging" ]
   pull_request:
     branches: [ "main", "staging" ]
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-          - staging
-          - production
-      server_name:
-        description: 'Server name'
-        required: true
-        default: 'kerry-staging'
-        type: string
-      server_type:
-        description: 'Server type'
-        required: true
-        default: 'cx22'
-        type: string
+  workflow_dispatch:    # No inputs needed, just manual trigger
 
 permissions:
   contents: read
@@ -33,12 +14,7 @@ jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
-
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      github.ref == 'refs/heads/main' ||
-      github.ref == 'refs/heads/staging'
+    environment: staging    # Single environment
 
     defaults:
       run:
@@ -72,15 +48,15 @@ jobs:
         terraform init -backend-config=backend.hcl
 
     - name: Terraform Format
-      run: terraform fmt -check
+      run: terraform fmt
 
     - name: Terraform Plan
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
         TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
-        TF_VAR_server_name: ${{ github.event.inputs.server_name || (github.ref == 'refs/heads/main' && 'kerry-production' || 'kerry-staging') }}
-        TF_VAR_server_type: ${{ github.event.inputs.server_type || 'cx22' }}
+        TF_VAR_server_name: "kerry-server"
+        TF_VAR_server_type: "cx22"
         TF_VAR_staging_username: ${{ secrets.STAGING_USERNAME }}
         TF_VAR_staging_password: ${{ secrets.STAGING_PASSWORD }}
       run: terraform plan -input=false
@@ -91,8 +67,8 @@ jobs:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
         TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
-        TF_VAR_server_name: ${{ github.event.inputs.server_name || (github.ref == 'refs/heads/main' && 'kerry-production' || 'kerry-staging') }}
-        TF_VAR_server_type: ${{ github.event.inputs.server_type || 'cx22' }}
+        TF_VAR_server_name: "kerry-server"
+        TF_VAR_server_type: "cx22"
         TF_VAR_staging_username: ${{ secrets.STAGING_USERNAME }}
         TF_VAR_staging_password: ${{ secrets.STAGING_PASSWORD }}
       run: terraform apply -auto-approve -input=false
