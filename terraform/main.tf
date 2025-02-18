@@ -8,16 +8,17 @@ resource "hcloud_ssh_key" "default" {
 resource "hcloud_firewall" "default" {
   name = "kerry-firewall"
 
+  # SSH access - Restricted to your home IP
   rule {
     direction = "in"
     protocol  = "tcp"
     port      = "22"
     source_ips = [
-      "0.0.0.0/0",
-      "::/0"
+      "109.173.177.150/32"  # Your home IP
     ]
   }
 
+  # HTTP access - Open to all
   rule {
     direction = "in"
     protocol  = "tcp"
@@ -28,6 +29,7 @@ resource "hcloud_firewall" "default" {
     ]
   }
 
+  # HTTPS access - Open to all
   rule {
     direction = "in"
     protocol  = "tcp"
@@ -56,6 +58,6 @@ resource "hcloud_server" "main" {
   }
 
   labels = {
-    environment = "production"
+    environment = var.server_name == "kerry-production" ? "production" : "staging"
   }
 }
