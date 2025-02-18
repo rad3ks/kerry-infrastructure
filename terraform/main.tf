@@ -8,13 +8,14 @@ resource "hcloud_ssh_key" "default" {
 resource "hcloud_firewall" "default" {
   name = "kerry-firewall"
 
-  # SSH access - Restricted to your home IP
+  # SSH access - Temporarily open to all
   rule {
     direction = "in"
     protocol  = "tcp"
     port      = "22"
     source_ips = [
-      "109.173.177.150/32" # Your home IP
+      "0.0.0.0/0",
+      "::/0"
     ]
   }
 
