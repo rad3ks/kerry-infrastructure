@@ -62,29 +62,49 @@ resource "hcloud_server" "main" {
     environment = var.server_name == "kerry-production" ? "production" : "staging"
   }
 
-  provisioner "file" {
-    source      = "files/nginx.conf"
-    destination = "/tmp/nginx.conf"
-  }
-
-  provisioner "file" {
-    source      = "files/setup-auth.sh"
-    destination = "/tmp/setup-auth.sh"
+  connection {
+    type        = "ssh"
+    user        = "root"
+    private_key = file("~/.ssh/id_ed25519")  # Adjust path to your SSH key
+    host        = self.ipv4_address
   }
 
   provisioner "remote-exec" {
     inline = [
+      # Wait for cloud-init to complete
+      "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done",
+      
+      # Wait for any system locks
+      "while [ -f /var/lib/apt/lists/lock ] || [ -f /var/lib/dpkg/lock-frontend ]; do sleep 2; done",
+      
+      # Update and install packages
       "apt-get update",
-      "apt-get install -y nginx apache2-utils",
-      "mv /tmp/nginx.conf /etc/nginx/sites-available/default",
-      "ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default",
-      "chmod +x /tmp/setup-auth.sh",
-      "export STAGING_USERNAME='${var.staging_username}'",
-      "export STAGING_PASSWORD='${var.staging_password}'",
-      "/tmp/setup-auth.sh",
+      "DEBIAN_FRONTEND=noninteractive apt-get install -y nginx apache2-utils",
+      
+      # Create Nginx config
+      "cat > /etc/nginx/sites-available/default << 'EOL'",
+      "server {",
+      "    listen 80;",
+      "    server_name staging.kerryai.app;",
+      "",
+      "    auth_basic \"Kerry AI Staging\";",
+      "    auth_basic_user_file /etc/nginx/.htpasswd;",
+      "",
+      "    location / {",
+      "        proxy_pass http://localhost:8000;",
+      "        proxy_set_header Host \\$host;",
+      "        proxy_set_header X-Real-IP \\$remote_addr;",
+      "    }",
+      "}",
+      "EOL",
+      
+      # Setup auth
+      "htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}",
+      
+      # Enable and start Nginx
       "systemctl enable nginx",
       "systemctl start nginx",
-      "systemctl restart nginx"
+      "nginx -t && systemctl restart nginx"
     ]
   }
 }
