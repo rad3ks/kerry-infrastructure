@@ -32,3 +32,15 @@ variable "ssh_public_key" {
   description = "SSH public key for server access"
   type        = string
 }
+
+variable "staging_username" {
+  description = "Username for staging basic auth"
+  type        = string
+  default     = "kerry"
+}
+
+variable "staging_password" {
+  description = "Password for staging basic auth"
+  type        = string
+  sensitive   = true
+}

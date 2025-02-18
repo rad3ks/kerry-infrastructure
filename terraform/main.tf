@@ -60,4 +60,24 @@ resource "hcloud_server" "main" {
   labels = {
     environment = var.server_name == "kerry-production" ? "production" : "staging"
   }
+
+  provisioner "file" {
+    source      = "files/nginx.conf"
+    destination = "/etc/nginx/sites-available/default"
+  }
+
+  provisioner "file" {
+    source      = "files/setup-auth.sh"
+    destination = "/tmp/setup-auth.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/setup-auth.sh",
+      "export STAGING_USERNAME='${var.staging_username}'",
+      "export STAGING_PASSWORD='${var.staging_password}'",
+      "/tmp/setup-auth.sh",
+      "systemctl restart nginx"
+    ]
+  }
 }
