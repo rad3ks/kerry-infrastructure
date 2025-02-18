@@ -7,7 +7,7 @@ variable "hcloud_token" {
 variable "server_name" {
   description = "Name of the server"
   type        = string
-  default     = "kerry-staging"
+  default     = "kerry-server"
 }
 
 variable "server_type" {
@@ -16,16 +16,16 @@ variable "server_type" {
   default     = "cx22"
 }
 
+variable "server_image" {
+  description = "Server image/OS"
+  type        = string
+  default     = "ubuntu-22.04"
+}
+
 variable "server_location" {
   description = "Server location"
   type        = string
   default     = "nbg1"
-}
-
-variable "server_image" {
-  description = "Server OS image"
-  type        = string
-  default     = "ubuntu-22.04"
 }
 
 variable "ssh_public_key" {
