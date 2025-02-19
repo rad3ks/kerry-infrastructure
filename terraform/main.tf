@@ -94,6 +94,10 @@ echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
 echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
 chmod 600 /etc/nginx/ssl/cloudflare.key
 
+# Setup auth - make sure this runs before Nginx config
+echo "[$(date)] Setting up authentication..."
+htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
+
 # Configure Nginx
 echo "[$(date)] Configuring Nginx..."
 cat > /etc/nginx/sites-available/default << 'EOL'
@@ -145,6 +149,7 @@ server {
     # Security headers
     add_header Strict-Transport-Security "max-age=31536000" always;
 
+    # Basic auth configuration
     auth_basic "Kerry AI Staging";
     auth_basic_user_file /etc/nginx/.htpasswd;
 
@@ -155,13 +160,7 @@ server {
 }
 EOL
 
-# Setup auth
-echo "[$(date)] Setting up authentication..."
-htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
-
-# Start Nginx
-echo "[$(date)] Starting Nginx..."
-systemctl enable nginx
+# Restart Nginx to apply changes
 systemctl restart nginx
 
 # Verify Nginx is running
