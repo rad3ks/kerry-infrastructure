@@ -66,36 +66,17 @@ resource "hcloud_server" "main" {
 #!/bin/bash
 
 # Enable logging and exit on error
-set -ex  # Added -x for verbose output
+set -ex
 exec 1> >(tee -a /var/log/user-data.log) 2>&1
 
 echo "[$(date)] Starting server setup..."
 
-# Check multiple cloud-init completion indicators
-echo "[$(date)] Checking cloud-init status..."
-while ! cloud-init status --wait; do
-    echo "[$(date)] Waiting for cloud-init to complete..."
-    sleep 5
-done
-
-echo "[$(date)] Cloud-init completed, proceeding with setup..."
-
-# Force update package list
-echo "[$(date)] Updating package list..."
-apt-get clean
-rm -rf /var/lib/apt/lists/*
+# Direct package installation without waiting
+echo "[$(date)] Installing packages..."
 apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y nginx apache2-utils
 
-# Install packages with explicit error checking
-echo "[$(date)] Installing nginx..."
-if ! apt-get install -y nginx apache2-utils; then
-    echo "[$(date)] First attempt failed, retrying after 30s..."
-    sleep 30
-    apt-get update
-    apt-get install -y nginx apache2-utils
-fi
-
-# Verify installation
+# Verify Nginx installation
 if ! command -v nginx >/dev/null 2>&1; then
     echo "[$(date)] ERROR: Nginx installation failed!"
     exit 1
