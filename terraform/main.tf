@@ -64,35 +64,78 @@ resource "hcloud_server" "main" {
 
   user_data = <<-EOF
 #!/bin/bash
-# Wait for cloud-init
-while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done
+
+# Enable logging
+exec 1> >(logger -s -t $(basename $0)) 2>&1
+
+echo "[$(date)] Starting server setup..."
+
+# Wait for cloud-init and apt
+echo "[$(date)] Waiting for cloud-init..."
+while [ ! -f /var/lib/cloud/instance/boot-finished ]; do 
+    sleep 1
+done
+
+# Wait for apt locks
+echo "[$(date)] Waiting for apt locks..."
+while lsof /var/lib/apt/lists/lock >/dev/null 2>&1 || lsof /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+    sleep 1
+done
 
 # Install packages
+echo "[$(date)] Installing packages..."
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y nginx apache2-utils
 
+# Create SSL directory
+echo "[$(date)] Setting up SSL..."
+mkdir -p /etc/nginx/ssl
+
+# Configure SSL certificates
+cat > /etc/nginx/ssl/cloudflare.crt << 'CERT'
+${var.cloudflare_cert}
+CERT
+
+cat > /etc/nginx/ssl/cloudflare.key << 'KEY'
+${var.cloudflare_key}
+KEY
+
+chmod 600 /etc/nginx/ssl/cloudflare.key
+
 # Configure Nginx
+echo "[$(date)] Configuring Nginx..."
 cat > /etc/nginx/sites-available/default << 'EOL'
 server {
     listen 80;
+    listen 443 ssl;
     server_name staging.kerryai.app;
+
+    # SSL configuration
+    ssl_certificate /etc/nginx/ssl/cloudflare.crt;
+    ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000" always;
 
     auth_basic "Kerry AI Staging";
     auth_basic_user_file /etc/nginx/.htpasswd;
 
     location / {
-        proxy_pass http://localhost:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+        return 200 'Kerry AI Staging - Coming Soon!';
+        add_header Content-Type text/plain;
     }
 }
 EOL
 
 # Setup auth
+echo "[$(date)] Setting up authentication..."
 htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
 
 # Start Nginx
+echo "[$(date)] Starting Nginx..."
 systemctl enable nginx
-systemctl start nginx
+systemctl restart nginx
+
+echo "[$(date)] Setup complete!"
 EOF
 }

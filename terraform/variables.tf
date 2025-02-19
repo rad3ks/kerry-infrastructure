@@ -44,3 +44,15 @@ variable "staging_password" {
   type        = string
   sensitive   = true
 }
+
+variable "cloudflare_cert" {
+  description = "Cloudflare Origin Certificate"
+  type        = string
+  sensitive   = true
+}
+
+variable "cloudflare_key" {
+  description = "Cloudflare Private Key"
+  type        = string
+  sensitive   = true
+}

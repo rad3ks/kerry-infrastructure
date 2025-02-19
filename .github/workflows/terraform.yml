@@ -47,8 +47,12 @@ jobs:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
         TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+        TF_VAR_server_name: "kerry-server"
+        TF_VAR_server_type: "cx22"
         TF_VAR_staging_username: ${{ secrets.STAGING_USERNAME }}
         TF_VAR_staging_password: ${{ secrets.STAGING_PASSWORD }}
+        TF_VAR_cloudflare_cert: ${{ secrets.CLOUDFLARE_CERT }}
+        TF_VAR_cloudflare_key: ${{ secrets.CLOUDFLARE_KEY }}
       run: terraform plan -input=false
 
     - name: Terraform Apply
@@ -57,6 +61,10 @@ jobs:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
         TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+        TF_VAR_server_name: "kerry-server"
+        TF_VAR_server_type: "cx22"
         TF_VAR_staging_username: ${{ secrets.STAGING_USERNAME }}
         TF_VAR_staging_password: ${{ secrets.STAGING_PASSWORD }}
+        TF_VAR_cloudflare_cert: ${{ secrets.CLOUDFLARE_CERT }}
+        TF_VAR_cloudflare_key: ${{ secrets.CLOUDFLARE_KEY }}
       run: terraform apply -auto-approve -input=false
