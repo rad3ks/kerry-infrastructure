@@ -94,6 +94,11 @@ echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
 echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
 chmod 600 /etc/nginx/ssl/cloudflare.key
 
+# Create fresh .htpasswd with proper permissions
+echo "[$(date)] Setting up authentication..."
+htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
+chmod 644 /etc/nginx/.htpasswd
+
 # Configure Nginx
 echo "[$(date)] Configuring Nginx..."
 cat > /etc/nginx/sites-available/default << 'EOL'
@@ -160,11 +165,6 @@ server {
     }
 }
 EOL
-
-# Create fresh .htpasswd with proper permissions
-echo "[$(date)] Setting up authentication..."
-htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
-chmod 644 /etc/nginx/.htpasswd
 
 # Restart Nginx to apply changes
 systemctl restart nginx
