@@ -65,41 +65,50 @@ resource "hcloud_server" "main" {
   user_data = <<-EOF
 #!/bin/bash
 
-# Enable logging
-exec 1> >(logger -s -t $(basename $0)) 2>&1
+# Enable logging and exit on error
+set -e
+exec 1> >(tee -a /var/log/user-data.log) 2>&1
 
 echo "[$(date)] Starting server setup..."
 
-# Wait for cloud-init and apt
+# Wait for cloud-init
 echo "[$(date)] Waiting for cloud-init..."
 while [ ! -f /var/lib/cloud/instance/boot-finished ]; do 
     sleep 1
 done
 
-# Wait for apt locks
-echo "[$(date)] Waiting for apt locks..."
-while lsof /var/lib/apt/lists/lock >/dev/null 2>&1 || lsof /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+# Update package list and wait for any system locks
+echo "[$(date)] Updating package list..."
+while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 ; do
+    echo "[$(date)] Waiting for other package manager to finish..."
     sleep 1
 done
 
-# Install packages
+# Install required packages
 echo "[$(date)] Installing packages..."
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y nginx apache2-utils
+apt-get install -y nginx apache2-utils
+if [ ! -f /usr/sbin/nginx ]; then
+    echo "[$(date)] Nginx installation failed! Retrying..."
+    apt-get install -y nginx apache2-utils
+fi
+
+# Verify Nginx installation
+if [ ! -f /usr/sbin/nginx ]; then
+    echo "[$(date)] ERROR: Nginx installation failed after retry!"
+    exit 1
+fi
+
+echo "[$(date)] Nginx installed successfully"
 
 # Create SSL directory
 echo "[$(date)] Setting up SSL..."
 mkdir -p /etc/nginx/ssl
 
 # Configure SSL certificates
-cat > /etc/nginx/ssl/cloudflare.crt << 'CERT'
-${var.cloudflare_cert}
-CERT
-
-cat > /etc/nginx/ssl/cloudflare.key << 'KEY'
-${var.cloudflare_key}
-KEY
-
+echo "[$(date)] Configuring SSL certificates..."
+echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
+echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
 chmod 600 /etc/nginx/ssl/cloudflare.key
 
 # Configure Nginx
@@ -136,6 +145,12 @@ echo "[$(date)] Starting Nginx..."
 systemctl enable nginx
 systemctl restart nginx
 
-echo "[$(date)] Setup complete!"
+# Verify Nginx is running
+if ! systemctl is-active --quiet nginx; then
+    echo "[$(date)] ERROR: Nginx failed to start!"
+    exit 1
+fi
+
+echo "[$(date)] Setup complete successfully!"
 EOF
 }
