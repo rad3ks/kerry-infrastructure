@@ -66,36 +66,38 @@ resource "hcloud_server" "main" {
 #!/bin/bash
 
 # Enable logging and exit on error
-set -e
+set -ex  # Added -x for verbose output
 exec 1> >(tee -a /var/log/user-data.log) 2>&1
 
 echo "[$(date)] Starting server setup..."
 
-# Wait for cloud-init
-echo "[$(date)] Waiting for cloud-init..."
-while [ ! -f /var/lib/cloud/instance/boot-finished ]; do 
-    sleep 1
+# Check multiple cloud-init completion indicators
+echo "[$(date)] Checking cloud-init status..."
+while ! cloud-init status --wait; do
+    echo "[$(date)] Waiting for cloud-init to complete..."
+    sleep 5
 done
 
-# Update package list and wait for any system locks
+echo "[$(date)] Cloud-init completed, proceeding with setup..."
+
+# Force update package list
 echo "[$(date)] Updating package list..."
-while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 ; do
-    echo "[$(date)] Waiting for other package manager to finish..."
-    sleep 1
-done
-
-# Install required packages
-echo "[$(date)] Installing packages..."
+apt-get clean
+rm -rf /var/lib/apt/lists/*
 apt-get update
-apt-get install -y nginx apache2-utils
-if [ ! -f /usr/sbin/nginx ]; then
-    echo "[$(date)] Nginx installation failed! Retrying..."
+
+# Install packages with explicit error checking
+echo "[$(date)] Installing nginx..."
+if ! apt-get install -y nginx apache2-utils; then
+    echo "[$(date)] First attempt failed, retrying after 30s..."
+    sleep 30
+    apt-get update
     apt-get install -y nginx apache2-utils
 fi
 
-# Verify Nginx installation
-if [ ! -f /usr/sbin/nginx ]; then
-    echo "[$(date)] ERROR: Nginx installation failed after retry!"
+# Verify installation
+if ! command -v nginx >/dev/null 2>&1; then
+    echo "[$(date)] ERROR: Nginx installation failed!"
     exit 1
 fi
 
