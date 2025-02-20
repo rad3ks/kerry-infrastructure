@@ -111,42 +111,8 @@ ls -la /etc/nginx/.htpasswd
 echo "[$(date)] Configuring Nginx..."
 echo "Creating staging config..."
 
-# Create staging config
+# Create test config
 cat > /etc/nginx/sites-available/staging << 'EOL'
-# HTTP redirect to HTTPS
-server {
-    listen 80;
-    server_name kerryai.app staging.kerryai.app;
-    return 301 https://$host$request_uri;
-}
-
-# Production server configuration
-server {
-    listen 443 ssl;
-    server_name kerryai.app;
-
-    # SSL configuration
-    ssl_certificate /etc/nginx/ssl/cloudflare.crt;
-    ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
-    
-    # Cloudflare recommended SSL settings
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_tickets off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000" always;
-
-    location / {
-        return 200 'KerryAI - Coming Soon!';
-        add_header Content-Type text/plain;
-    }
-}
-
-# Staging server configuration
 server {
     listen 443 ssl;
     server_name staging.kerryai.app;
@@ -154,27 +120,18 @@ server {
     # SSL configuration
     ssl_certificate /etc/nginx/ssl/cloudflare.crt;
     ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
-    
-    # Cloudflare recommended SSL settings
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_tickets off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
 
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000" always;
-    add_header Cache-Control "no-store, no-cache, must-revalidate" always;
-    add_header X-Debug-Server "staging" always;
-
-    # Basic auth at server level
-    auth_basic "Kerry AI Staging";
+    # Force authentication for everything
+    satisfy all;  # Require all conditions to be met
+    auth_basic "Restricted Area";
     auth_basic_user_file /etc/nginx/.htpasswd;
 
+    # Debug headers
+    add_header X-Debug-Server "staging" always;
+    add_header X-Auth-Debug "auth_enabled" always;
+
     location / {
-        default_type text/plain;
-        return 200 'Kerry AI Staging - Coming Soon!';
+        return 200 'Authentication required!\n';
     }
 }
 EOL
