@@ -162,21 +162,19 @@ server {
     ssl_session_tickets off;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
-        
-    # Add this for debugging
-    add_header X-Debug-Server "staging" always;
 
     # Security headers
     add_header Strict-Transport-Security "max-age=31536000" always;
     add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    add_header X-Debug-Server "staging" always;
 
     # Basic auth at server level
     auth_basic "Kerry AI Staging";
     auth_basic_user_file /etc/nginx/.htpasswd;
 
     location / {
+        default_type text/plain;
         return 200 'Kerry AI Staging - Coming Soon!';
-        add_header Content-Type text/plain;
     }
 }
 EOL
