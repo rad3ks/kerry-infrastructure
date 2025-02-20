@@ -113,14 +113,28 @@ echo "[$(date)] Starting server setup..."
 
 # Install required packages
 echo "[$(date)] Installing packages..."
-apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
+apt-get update || {
+    echo "[$(date)] ERROR: apt-get update failed"
+    exit 1
+}
+
+DEBIAN_FRONTEND=noninteractive apt-get install -y nginx-core || {
+    echo "[$(date)] ERROR: nginx installation failed"
+    exit 1
+}
+
+# Verify nginx is installed
+if ! command -v nginx >/dev/null 2>&1; then
+    echo "[$(date)] ERROR: nginx not found after installation"
+    exit 1
+}
 
 # Create necessary directories
 mkdir -p /var/www/html/staging
 mkdir -p /etc/nginx/ssl
 
 # Create login page
+echo "[$(date)] Creating login page..."
 cat > /var/www/html/staging/login.html << 'HTMLEOF'
 ${templatefile("${path.module}/files/login.html", {
   staging_username = var.staging_username,
@@ -130,6 +144,7 @@ ${templatefile("${path.module}/files/login.html", {
 HTMLEOF
 
 # Setup SSL
+echo "[$(date)] Setting up SSL..."
 echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
 echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
 chmod 600 /etc/nginx/ssl/cloudflare.key
@@ -166,28 +181,6 @@ server {
         add_header Content-Type text/plain;
     }
 }
-
-# Production server (no auth)
-server {
-    listen 443 ssl;
-    server_name kerryai.app;
-    
-    # SSL configuration
-    ssl_certificate /etc/nginx/ssl/cloudflare.crt;
-    ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
-    
-    location / {
-        return 200 'KerryAI - Coming Soon!\n';
-        add_header Content-Type text/plain;
-    }
-}
-
-# HTTP to HTTPS redirect
-server {
-    listen 80;
-    server_name kerryai.app staging.kerryai.app;
-    return 301 https://$host$request_uri;
-}
 EOL
 
 # Enable configuration
@@ -196,10 +189,10 @@ ln -sf /etc/nginx/sites-available/staging /etc/nginx/sites-enabled/
 
 # Test and restart Nginx
 nginx -t && systemctl restart nginx || {
-    echo "Nginx configuration test failed!"
+    echo "[$(date)] ERROR: Nginx configuration test failed"
     exit 1
 }
 
-echo "[$(date)] Setup complete successfully!"
+echo "[$(date)] Setup completed successfully!"
 EOF
 }
