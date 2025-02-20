@@ -71,12 +71,12 @@ exec 1> >(tee -a /var/log/user-data.log) 2>&1
 
 echo "[$(date)] Starting server setup..."
 
-# Completely remove nginx and reinstall
+# Completely remove nginx and reinstall with all modules
 echo "[$(date)] Installing packages..."
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get remove --purge -y nginx nginx-common nginx-full
 DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
-DEBIAN_FRONTEND=noninteractive apt-get install -y nginx-full apache2-utils
+DEBIAN_FRONTEND=noninteractive apt-get install -y nginx-extras apache2-utils
 
 # Verify Nginx installation and modules
 if ! command -v nginx >/dev/null 2>&1; then
@@ -84,9 +84,8 @@ if ! command -v nginx >/dev/null 2>&1; then
     exit 1
 fi
 
-# Debug: Show Nginx version and modules
-echo "[$(date)] Nginx version and modules:"
-nginx -V 2>&1
+# Debug: verify auth_basic module
+nginx -V 2>&1 | grep auth_basic || echo "WARNING: auth_basic module not found!"
 
 # Create SSL directory
 echo "[$(date)] Setting up SSL..."
@@ -98,14 +97,20 @@ echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
 echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
 chmod 600 /etc/nginx/ssl/cloudflare.key
 
-# Create fresh .htpasswd with proper permissions
+# Create fresh .htpasswd with debug output
 echo "[$(date)] Setting up authentication..."
+echo "Creating .htpasswd file..."
 htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
+echo "Setting permissions..."
 chmod 640 /etc/nginx/.htpasswd
 chown root:www-data /etc/nginx/.htpasswd
+echo "Verifying .htpasswd:"
+ls -la /etc/nginx/.htpasswd
+cat /etc/nginx/.htpasswd
 
-# Configure Nginx
+# Configure Nginx with debug output
 echo "[$(date)] Configuring Nginx..."
+echo "Creating staging config..."
 
 # Create staging config
 cat > /etc/nginx/sites-available/staging << 'EOL'
@@ -188,6 +193,16 @@ if ! systemctl is-active --quiet nginx; then
     echo "[$(date)] ERROR: Nginx failed to start!"
     exit 1
 fi
+
+# After config creation
+echo "Verifying Nginx config:"
+nginx -t
+
+echo "Enabled sites:"
+ls -la /etc/nginx/sites-enabled/
+
+echo "Testing auth file access as www-data:"
+sudo -u www-data cat /etc/nginx/.htpasswd
 
 echo "[$(date)] Setup complete successfully!"
 EOF
