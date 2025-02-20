@@ -120,6 +120,11 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
 mkdir -p /var/www/html/staging
 mkdir -p /etc/nginx/ssl
 
+# Create login page
+cat > /var/www/html/staging/login.html << 'HTMLEOF'
+${file("${path.module}/files/login.html")}
+HTMLEOF
+
 # Setup SSL
 echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
 echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
@@ -192,16 +197,4 @@ nginx -t && systemctl restart nginx || {
 
 echo "[$(date)] Setup complete successfully!"
 EOF
-
-  provisioner "file" {
-    source      = "${path.module}/files/login.html"
-    destination = "/var/www/html/staging/login.html"
-
-    connection {
-      type        = "ssh"
-      user        = "root"
-      private_key = file(var.ssh_private_key_path)
-      host        = self.ipv4_address
-    }
-  }
 }
