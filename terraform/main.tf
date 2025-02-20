@@ -113,6 +113,26 @@ echo "Creating staging config..."
 
 # Create test config
 cat > /etc/nginx/sites-available/staging << 'EOL'
+# Production server (no auth)
+server {
+    listen 443 ssl;
+    server_name kerryai.app;
+
+    # SSL configuration
+    ssl_certificate /etc/nginx/ssl/cloudflare.crt;
+    ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
+
+    # Force HTTPS
+    if ($scheme != "https") {
+        return 301 https://$host$request_uri;
+    }
+
+    location / {
+        return 200 'KerryAI - Coming Soon!\n';
+    }
+}
+
+# Staging server (with auth)
 server {
     listen 443 ssl;
     server_name staging.kerryai.app;
