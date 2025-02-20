@@ -117,9 +117,7 @@ echo "[$(date)] Starting server setup..."
 # Install required packages
 echo "[$(date)] Installing packages..."
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get remove --purge -y nginx nginx-common nginx-full
-DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
-DEBIAN_FRONTEND=noninteractive apt-get install -y nginx-extras apache2-utils
+DEBIAN_FRONTEND=noninteractive apt-get install -y nginx apache2-utils
 
 # Verify installation
 if ! command -v nginx >/dev/null 2>&1; then
@@ -188,27 +186,12 @@ server {
 
     # Security headers
     add_header Strict-Transport-Security "max-age=31536000" always;
-    add_header Cache-Control "no-store, no-cache, must-revalidate" always;
-    add_header Clear-Site-Data "\"cache\", \"cookies\", \"storage\"" always;
+    
+    # Basic auth for all locations
+    auth_basic "Kerry AI Staging";
+    auth_basic_user_file /etc/nginx/.htpasswd;
 
     location / {
-        set $auth_user "";
-        set $auth_pass "";
-        
-        if ($http_authorization ~ "^Basic (.*)$") {
-            set $auth $1;
-        }
-
-        if ($http_authorization = "") {
-            add_header WWW-Authenticate 'Basic realm="Kerry AI Staging"' always;
-            return 401 'Authentication required\n';
-        }
-
-        if ($auth != "a2Vycnk6dmVkQ2VjLTR6aXpqaS1kaWhwaXI=") {
-            add_header WWW-Authenticate 'Basic realm="Kerry AI Staging"' always;
-            return 401 'Invalid credentials\n';
-        }
-
         return 200 'Kerry AI Staging - Coming Soon!\n';
         add_header Content-Type text/plain;
     }
