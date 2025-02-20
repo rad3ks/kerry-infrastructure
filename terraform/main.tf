@@ -162,6 +162,9 @@ server {
     ssl_session_tickets off;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
+        
+    # Add this for debugging
+    add_header X-Debug-Server "staging" always;
 
     # Security headers
     add_header Strict-Transport-Security "max-age=31536000" always;
@@ -173,7 +176,6 @@ server {
 
     location / {
         return 200 'Kerry AI Staging - Coming Soon!';
-        add_header Content-Type text/plain;
     }
 }
 EOL
