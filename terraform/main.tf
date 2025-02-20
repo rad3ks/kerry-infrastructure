@@ -136,6 +136,7 @@ chmod 600 /etc/nginx/ssl/cloudflare.key
 
 # Configure Nginx
 cat > /etc/nginx/sites-available/staging << 'EOL'
+# Staging server (with HTML form auth)
 server {
     listen 443 ssl;
     server_name staging.kerryai.app;
@@ -164,6 +165,28 @@ server {
         return 200 'Kerry AI Staging - Coming Soon!\n';
         add_header Content-Type text/plain;
     }
+}
+
+# Production server (no auth)
+server {
+    listen 443 ssl;
+    server_name kerryai.app;
+    
+    # SSL configuration
+    ssl_certificate /etc/nginx/ssl/cloudflare.crt;
+    ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
+    
+    location / {
+        return 200 'KerryAI - Coming Soon!\n';
+        add_header Content-Type text/plain;
+    }
+}
+
+# HTTP to HTTPS redirect
+server {
+    listen 80;
+    server_name kerryai.app staging.kerryai.app;
+    return 301 https://$host$request_uri;
 }
 EOL
 
