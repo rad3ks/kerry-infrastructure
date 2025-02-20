@@ -122,7 +122,11 @@ mkdir -p /etc/nginx/ssl
 
 # Create login page
 cat > /var/www/html/staging/login.html << 'HTMLEOF'
-${file("${path.module}/files/login.html")}
+${templatefile("${path.module}/files/login.html", {
+  staging_username = var.staging_username,
+  staging_password = var.staging_password,
+  auth_token = base64encode("${var.staging_username}:${var.staging_password}")
+})}
 HTMLEOF
 
 # Setup SSL
@@ -149,9 +153,10 @@ server {
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
 
+    root /var/www/html/staging;
+
     location / {
         if ($http_cookie !~ "auth=a2Vycnk6dmVkQ2VjLTR6aXpqaS1kaWhwaXI=") {
-            root /var/www/html/staging;
             try_files /login.html =404;
             add_header Content-Type text/html;
             break;

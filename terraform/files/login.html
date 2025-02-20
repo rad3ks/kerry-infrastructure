@@ -53,8 +53,8 @@
             e.preventDefault();
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
-            if (username === "kerry" && password === "vedCec-4zizji-dihpir") {
-                document.cookie = "auth=a2Vycnk6dmVkQ2VjLTR6aXpqaS1kaWhwaXI=; path=/";
+            if (username === "${staging_username}" && password === "${staging_password}") {
+                document.cookie = "auth=${auth_token}; path=/";
                 window.location.reload();
             } else {
                 alert("Invalid credentials");
