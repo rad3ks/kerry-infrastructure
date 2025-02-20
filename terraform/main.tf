@@ -121,11 +121,6 @@ server {
     ssl_certificate /etc/nginx/ssl/cloudflare.crt;
     ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
 
-    # Force authentication for everything
-    satisfy all;  # Require all conditions to be met
-    auth_basic "Restricted Area";
-    auth_basic_user_file /etc/nginx/.htpasswd;
-
     # Debug headers
     add_header X-Debug-Server "staging" always;
     add_header X-Auth-Debug "auth_enabled" always;
@@ -133,9 +128,27 @@ server {
     add_header Pragma "no-cache" always;
 
     location / {
-        auth_basic "Restricted Area";  # Double-check auth here too
-        auth_basic_user_file /etc/nginx/.htpasswd;
-        return 200 'Authentication required!\n';
+        set $auth_user "";
+        set $auth_pass "";
+        
+        # Extract auth credentials
+        if ($http_authorization ~ "^Basic (.*)$") {
+            set $auth $1;
+        }
+
+        # If no auth provided, require authentication
+        if ($http_authorization = "") {
+            add_header WWW-Authenticate 'Basic realm="Restricted Area"';
+            return 401 'Authentication required\n';
+        }
+
+        # If auth provided but incorrect, deny
+        if ($auth != "a2Vycnk6eW91cl9wYXNzd29yZA==") {
+            return 403 'Invalid credentials\n';
+        }
+
+        # If we get here, auth was successful
+        return 200 'Authentication successful!\n';
     }
 }
 EOL
