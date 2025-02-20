@@ -143,7 +143,7 @@ server {
         }
 
         # If auth provided but incorrect, deny
-        if ($auth != "a2Vycnk6eW91cl9wYXNzd29yZA==") {
+        if ($auth != "a2Vycnk6dmVkQ2VjLTR6aXpqaS1kaWhwaXI=") {
             return 403 'Invalid credentials\n';
         }
 
