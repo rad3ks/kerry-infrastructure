@@ -19,25 +19,69 @@ resource "hcloud_firewall" "default" {
     ]
   }
 
-  # HTTP access - Open to all
+  # HTTP access - Cloudflare IPs only
   rule {
     direction = "in"
     protocol  = "tcp"
     port      = "80"
     source_ips = [
-      "0.0.0.0/0",
-      "::/0"
+      # IPv4 ranges
+      "173.245.48.0/20",
+      "103.21.244.0/22",
+      "103.22.200.0/22",
+      "103.31.4.0/22",
+      "141.101.64.0/18",
+      "108.162.192.0/18",
+      "190.93.240.0/20",
+      "188.114.96.0/20",
+      "197.234.240.0/22",
+      "198.41.128.0/17",
+      "162.158.0.0/15",
+      "104.16.0.0/13",
+      "104.24.0.0/14",
+      "172.64.0.0/13",
+      "131.0.72.0/22",
+      # IPv6 ranges
+      "2400:cb00::/32",
+      "2606:4700::/32",
+      "2803:f800::/32",
+      "2405:b500::/32",
+      "2405:8100::/32",
+      "2a06:98c0::/29",
+      "2c0f:f248::/32"
     ]
   }
 
-  # HTTPS access - Open to all
+  # HTTPS access - Cloudflare IPs only
   rule {
     direction = "in"
     protocol  = "tcp"
     port      = "443"
     source_ips = [
-      "0.0.0.0/0",
-      "::/0"
+      # IPv4 ranges
+      "173.245.48.0/20",
+      "103.21.244.0/22",
+      "103.22.200.0/22",
+      "103.31.4.0/22",
+      "141.101.64.0/18",
+      "108.162.192.0/18",
+      "190.93.240.0/20",
+      "188.114.96.0/20",
+      "197.234.240.0/22",
+      "198.41.128.0/17",
+      "162.158.0.0/15",
+      "104.16.0.0/13",
+      "104.24.0.0/14",
+      "172.64.0.0/13",
+      "131.0.72.0/22",
+      # IPv6 ranges
+      "2400:cb00::/32",
+      "2606:4700::/32",
+      "2803:f800::/32",
+      "2405:b500::/32",
+      "2405:8100::/32",
+      "2a06:98c0::/29",
+      "2c0f:f248::/32"
     ]
   }
 }
@@ -50,7 +94,6 @@ resource "hcloud_server" "main" {
   location    = var.server_location
 
   ssh_keys = [hcloud_ssh_key.default.id]
-
   firewall_ids = [hcloud_firewall.default.id]
 
   public_net {
@@ -71,47 +114,34 @@ exec 1> >(tee -a /var/log/user-data.log) 2>&1
 
 echo "[$(date)] Starting server setup..."
 
-# Completely remove nginx and reinstall with all modules
+# Install required packages
 echo "[$(date)] Installing packages..."
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get remove --purge -y nginx nginx-common nginx-full
 DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
 DEBIAN_FRONTEND=noninteractive apt-get install -y nginx-extras apache2-utils
 
-# Verify Nginx installation and modules
+# Verify installation
 if ! command -v nginx >/dev/null 2>&1; then
     echo "[$(date)] ERROR: Nginx installation failed!"
     exit 1
 fi
 
-# Debug: verify auth_basic module
-nginx -V 2>&1 | grep auth_basic || echo "WARNING: auth_basic module not found!"
-
-# Create SSL directory
+# Setup SSL
 echo "[$(date)] Setting up SSL..."
 mkdir -p /etc/nginx/ssl
-
-# Configure SSL certificates
-echo "[$(date)] Configuring SSL certificates..."
 echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
 echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
 chmod 600 /etc/nginx/ssl/cloudflare.key
 
-# Create fresh .htpasswd with debug output
+# Setup authentication
 echo "[$(date)] Setting up authentication..."
-echo "Creating .htpasswd file..."
 htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
-echo "Setting permissions..."
 chown root:www-data /etc/nginx/.htpasswd
 chmod 640 /etc/nginx/.htpasswd
-echo "Verifying .htpasswd:"
-ls -la /etc/nginx/.htpasswd
 
-# Configure Nginx with debug output
+# Configure Nginx
 echo "[$(date)] Configuring Nginx..."
-echo "Creating staging config..."
-
-# Create test config
 cat > /etc/nginx/sites-available/staging << 'EOL'
 # Production server (no auth)
 server {
@@ -121,14 +151,21 @@ server {
     # SSL configuration
     ssl_certificate /etc/nginx/ssl/cloudflare.crt;
     ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
+    
+    # SSL settings
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_tickets off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
 
-    # Force HTTPS
-    if ($scheme != "https") {
-        return 301 https://$host$request_uri;
-    }
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000" always;
 
     location / {
         return 200 'KerryAI - Coming Soon!\n';
+        add_header Content-Type text/plain;
     }
 }
 
@@ -137,57 +174,56 @@ server {
     listen 443 ssl;
     server_name staging.kerryai.app;
 
-    # SSL configuration
+    # SSL configuration (shared with production)
     ssl_certificate /etc/nginx/ssl/cloudflare.crt;
     ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
-
-    # Force HTTPS
-    if ($scheme != "https") {
-        return 301 https://$host$request_uri;
-    }
-
-    # Debug headers
-    add_header X-Debug-Server "staging" always;
-    add_header X-Auth-Debug "auth_enabled" always;
     
-    # Browser cache control
-    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
-    add_header Pragma "no-cache" always;
-    
-    # Clear auth cache
+    # SSL settings
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_tickets off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header Cache-Control "no-store, no-cache, must-revalidate" always;
     add_header Clear-Site-Data "\"cache\", \"cookies\", \"storage\"" always;
 
     location / {
         set $auth_user "";
         set $auth_pass "";
         
-        # Extract auth credentials
         if ($http_authorization ~ "^Basic (.*)$") {
             set $auth $1;
         }
 
-        # If no auth provided, require authentication
         if ($http_authorization = "") {
             add_header WWW-Authenticate 'Basic realm="Kerry AI Staging"' always;
             return 401 'Authentication required\n';
         }
 
-        # If auth provided but incorrect, deny
         if ($auth != "a2Vycnk6dmVkQ2VjLTR6aXpqaS1kaWhwaXI=") {
             add_header WWW-Authenticate 'Basic realm="Kerry AI Staging"' always;
             return 401 'Invalid credentials\n';
         }
 
-        # If we get here, auth was successful
-        return 200 'Authentication successful!\n';
+        return 200 'Kerry AI Staging - Coming Soon!\n';
+        add_header Content-Type text/plain;
     }
+}
+
+# HTTP to HTTPS redirect
+server {
+    listen 80;
+    server_name kerryai.app staging.kerryai.app;
+    return 301 https://$host$request_uri;
 }
 EOL
 
-# Remove default symlink if it exists
+# Enable configuration
 rm -f /etc/nginx/sites-enabled/default
-
-# Enable the staging configuration
 ln -sf /etc/nginx/sites-available/staging /etc/nginx/sites-enabled/
 
 # Test and restart Nginx
@@ -196,23 +232,6 @@ nginx -t && systemctl restart nginx || {
     echo "Nginx configuration test failed!"
     exit 1
 }
-
-# Verify Nginx is running
-if ! systemctl is-active --quiet nginx; then
-    echo "[$(date)] ERROR: Nginx failed to start!"
-    journalctl -xeu nginx
-    exit 1
-fi
-
-# After config creation
-echo "Verifying Nginx config:"
-nginx -t
-
-echo "Enabled sites:"
-ls -la /etc/nginx/sites-enabled/
-
-echo "Testing auth file access as www-data:"
-sudo -u www-data cat /etc/nginx/.htpasswd
 
 echo "[$(date)] Setup complete successfully!"
 EOF
