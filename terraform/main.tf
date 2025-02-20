@@ -101,7 +101,9 @@ chmod 640 /etc/nginx/.htpasswd
 
 # Configure Nginx
 echo "[$(date)] Configuring Nginx..."
-cat > /etc/nginx/sites-available/default << 'EOL'
+
+# Create staging config
+cat > /etc/nginx/sites-available/staging << 'EOL'
 # HTTP redirect to HTTPS
 server {
     listen 80;
@@ -166,8 +168,11 @@ server {
 }
 EOL
 
-# Enable the configuration
-ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
+# Remove default symlink if it exists
+rm -f /etc/nginx/sites-enabled/default
+
+# Enable the staging configuration
+ln -sf /etc/nginx/sites-available/staging /etc/nginx/sites-enabled/
 
 # Restart Nginx to apply changes
 systemctl restart nginx
