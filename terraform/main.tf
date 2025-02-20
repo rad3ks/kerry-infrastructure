@@ -176,6 +176,7 @@ server {
 
     location / {
         return 200 'Kerry AI Staging - Coming Soon!';
+        add_header Content-Type text/plain;
     }
 }
 EOL
