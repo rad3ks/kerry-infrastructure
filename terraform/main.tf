@@ -113,28 +113,14 @@ echo "[$(date)] Starting server setup..."
 
 # Install required packages
 echo "[$(date)] Installing packages..."
-apt-get update || {
-    echo "[$(date)] ERROR: apt-get update failed"
-    exit 1
-}
-
-DEBIAN_FRONTEND=noninteractive apt-get install -y nginx-core || {
-    echo "[$(date)] ERROR: nginx installation failed"
-    exit 1
-}
-
-# Verify nginx is installed
-if ! command -v nginx >/dev/null 2>&1; then
-    echo "[$(date)] ERROR: nginx not found after installation"
-    exit 1
-}
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
 
 # Create necessary directories
 mkdir -p /var/www/html/staging
 mkdir -p /etc/nginx/ssl
 
 # Create login page
-echo "[$(date)] Creating login page..."
 cat > /var/www/html/staging/login.html << 'HTMLEOF'
 ${templatefile("${path.module}/files/login.html", {
   staging_username = var.staging_username,
@@ -144,14 +130,12 @@ ${templatefile("${path.module}/files/login.html", {
 HTMLEOF
 
 # Setup SSL
-echo "[$(date)] Setting up SSL..."
 echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
 echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
 chmod 600 /etc/nginx/ssl/cloudflare.key
 
 # Configure Nginx
 cat > /etc/nginx/sites-available/staging << 'EOL'
-# Staging server (with HTML form auth)
 server {
     listen 443 ssl;
     server_name staging.kerryai.app;
@@ -188,10 +172,7 @@ rm -f /etc/nginx/sites-enabled/default
 ln -sf /etc/nginx/sites-available/staging /etc/nginx/sites-enabled/
 
 # Test and restart Nginx
-nginx -t && systemctl restart nginx || {
-    echo "[$(date)] ERROR: Nginx configuration test failed"
-    exit 1
-}
+nginx -t && systemctl restart nginx
 
 echo "[$(date)] Setup completed successfully!"
 EOF
