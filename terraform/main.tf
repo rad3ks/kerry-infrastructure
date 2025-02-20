@@ -129,6 +129,8 @@ server {
     # Debug headers
     add_header X-Debug-Server "staging" always;
     add_header X-Auth-Debug "auth_enabled" always;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+    add_header Pragma "no-cache" always;
 
     location / {
         return 200 'Authentication required!\n';
