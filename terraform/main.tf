@@ -71,12 +71,13 @@ exec 1> >(tee -a /var/log/user-data.log) 2>&1
 
 echo "[$(date)] Starting server setup..."
 
-# Direct package installation without waiting
+# Install full Nginx package with all modules
 echo "[$(date)] Installing packages..."
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y nginx apache2-utils
+DEBIAN_FRONTEND=noninteractive apt-get remove -y nginx
+DEBIAN_FRONTEND=noninteractive apt-get install -y nginx-full apache2-utils
 
-# Verify Nginx installation
+# Verify Nginx installation and modules
 if ! command -v nginx >/dev/null 2>&1; then
     echo "[$(date)] ERROR: Nginx installation failed!"
     exit 1
