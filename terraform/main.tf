@@ -121,11 +121,21 @@ server {
     ssl_certificate /etc/nginx/ssl/cloudflare.crt;
     ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
 
+    # Force HTTPS
+    if ($scheme != "https") {
+        return 301 https://$host$request_uri;
+    }
+
     # Debug headers
     add_header X-Debug-Server "staging" always;
     add_header X-Auth-Debug "auth_enabled" always;
+    
+    # Browser cache control
     add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
     add_header Pragma "no-cache" always;
+    
+    # Clear auth cache
+    add_header Clear-Site-Data "\"cache\", \"cookies\", \"storage\"" always;
 
     location / {
         set $auth_user "";
@@ -138,13 +148,14 @@ server {
 
         # If no auth provided, require authentication
         if ($http_authorization = "") {
-            add_header WWW-Authenticate 'Basic realm="Restricted Area"';
+            add_header WWW-Authenticate 'Basic realm="Kerry AI Staging"' always;
             return 401 'Authentication required\n';
         }
 
         # If auth provided but incorrect, deny
         if ($auth != "a2Vycnk6dmVkQ2VjLTR6aXpqaS1kaWhwaXI=") {
-            return 403 'Invalid credentials\n';
+            add_header WWW-Authenticate 'Basic realm="Kerry AI Staging"' always;
+            return 401 'Invalid credentials\n';
         }
 
         # If we get here, auth was successful
