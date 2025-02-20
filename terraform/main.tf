@@ -102,11 +102,10 @@ echo "[$(date)] Setting up authentication..."
 echo "Creating .htpasswd file..."
 htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
 echo "Setting permissions..."
-chmod 640 /etc/nginx/.htpasswd
 chown root:www-data /etc/nginx/.htpasswd
+chmod 640 /etc/nginx/.htpasswd
 echo "Verifying .htpasswd:"
 ls -la /etc/nginx/.htpasswd
-cat /etc/nginx/.htpasswd
 
 # Configure Nginx with debug output
 echo "[$(date)] Configuring Nginx..."
@@ -166,9 +165,9 @@ server {
 
     # Security headers
     add_header Strict-Transport-Security "max-age=31536000" always;
-    add_header Cache-Control "no-store, no-cache, must-revalidate";
+    add_header Cache-Control "no-store, no-cache, must-revalidate" always;
 
-    # Basic auth at server level only
+    # Basic auth at server level
     auth_basic "Kerry AI Staging";
     auth_basic_user_file /etc/nginx/.htpasswd;
 
@@ -185,12 +184,17 @@ rm -f /etc/nginx/sites-enabled/default
 # Enable the staging configuration
 ln -sf /etc/nginx/sites-available/staging /etc/nginx/sites-enabled/
 
-# Restart Nginx to apply changes
-systemctl restart nginx
+# Test and restart Nginx
+echo "[$(date)] Testing and restarting Nginx..."
+nginx -t && systemctl restart nginx || {
+    echo "Nginx configuration test failed!"
+    exit 1
+}
 
 # Verify Nginx is running
 if ! systemctl is-active --quiet nginx; then
     echo "[$(date)] ERROR: Nginx failed to start!"
+    journalctl -xeu nginx
     exit 1
 fi
 
