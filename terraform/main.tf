@@ -71,10 +71,11 @@ exec 1> >(tee -a /var/log/user-data.log) 2>&1
 
 echo "[$(date)] Starting server setup..."
 
-# Install full Nginx package with all modules
+# Completely remove nginx and reinstall
 echo "[$(date)] Installing packages..."
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get remove -y nginx
+DEBIAN_FRONTEND=noninteractive apt-get remove --purge -y nginx nginx-common nginx-full
+DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
 DEBIAN_FRONTEND=noninteractive apt-get install -y nginx-full apache2-utils
 
 # Verify Nginx installation and modules
@@ -83,7 +84,9 @@ if ! command -v nginx >/dev/null 2>&1; then
     exit 1
 fi
 
-echo "[$(date)] Nginx installed successfully"
+# Debug: Show Nginx version and modules
+echo "[$(date)] Nginx version and modules:"
+nginx -V 2>&1
 
 # Create SSL directory
 echo "[$(date)] Setting up SSL..."
