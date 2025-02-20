@@ -97,14 +97,20 @@ chmod 600 /etc/nginx/ssl/cloudflare.key
 # Create fresh .htpasswd with proper permissions
 echo "[$(date)] Setting up authentication..."
 htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
-chmod 644 /etc/nginx/.htpasswd
+chmod 640 /etc/nginx/.htpasswd
 
 # Configure Nginx
 echo "[$(date)] Configuring Nginx..."
 cat > /etc/nginx/sites-available/default << 'EOL'
-# Product server configuration
+# HTTP redirect to HTTPS
 server {
     listen 80;
+    server_name kerryai.app staging.kerryai.app;
+    return 301 https://$host$request_uri;
+}
+
+# Product server configuration
+server {
     listen 443 ssl;
     server_name kerryai.app;
 
@@ -131,7 +137,6 @@ server {
 
 # Staging server configuration
 server {
-    listen 80;
     listen 443 ssl;
     server_name staging.kerryai.app;
 
@@ -150,21 +155,19 @@ server {
     # Security headers
     add_header Strict-Transport-Security "max-age=31536000" always;
 
-    # Basic auth at server level
+    # Basic auth at server level only
     auth_basic "Kerry AI Staging";
     auth_basic_user_file /etc/nginx/.htpasswd;
 
     location / {
-        # Enforce auth for this location
-        auth_basic "Kerry AI Staging";
-        auth_basic_user_file /etc/nginx/.htpasswd;
-        
-        # Only return 200 if auth passes
         return 200 'Kerry AI Staging - Coming Soon!';
         add_header Content-Type text/plain;
     }
 }
 EOL
+
+# Enable the configuration
+ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
 
 # Restart Nginx to apply changes
 systemctl restart nginx
