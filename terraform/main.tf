@@ -19,7 +19,7 @@ resource "hcloud_firewall" "default" {
     ]
   }
 
-  # HTTP access - Cloudflare IPs only
+  # HTTP/HTTPS access - Cloudflare IPs only
   rule {
     direction = "in"
     protocol  = "tcp"
@@ -52,7 +52,6 @@ resource "hcloud_firewall" "default" {
     ]
   }
 
-  # HTTPS access - Cloudflare IPs only
   rule {
     direction = "in"
     protocol  = "tcp"
@@ -107,8 +106,6 @@ resource "hcloud_server" "main" {
 
   user_data = <<-EOF
 #!/bin/bash
-
-# Enable logging and exit on error
 set -ex
 exec 1> >(tee -a /var/log/user-data.log) 2>&1
 
@@ -117,34 +114,23 @@ echo "[$(date)] Starting server setup..."
 # Install required packages
 echo "[$(date)] Installing packages..."
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y nginx apache2-utils
+DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
 
-# Verify installation
-if ! command -v nginx >/dev/null 2>&1; then
-    echo "[$(date)] ERROR: Nginx installation failed!"
-    exit 1
-fi
+# Create necessary directories
+mkdir -p /var/www/html/staging
+mkdir -p /etc/nginx/ssl
 
 # Setup SSL
-echo "[$(date)] Setting up SSL..."
-mkdir -p /etc/nginx/ssl
 echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
 echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
 chmod 600 /etc/nginx/ssl/cloudflare.key
 
-# Setup authentication
-echo "[$(date)] Setting up authentication..."
-htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
-chown root:www-data /etc/nginx/.htpasswd
-chmod 640 /etc/nginx/.htpasswd
-
 # Configure Nginx
-echo "[$(date)] Configuring Nginx..."
 cat > /etc/nginx/sites-available/staging << 'EOL'
-# Production server (no auth)
+# Staging server (with HTML form auth)
 server {
     listen 443 ssl;
-    server_name kerryai.app;
+    server_name staging.kerryai.app;
 
     # SSL configuration
     ssl_certificate /etc/nginx/ssl/cloudflare.crt;
@@ -158,58 +144,30 @@ server {
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
 
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000" always;
-
     location / {
-        return 200 'KerryAI - Coming Soon!\n';
+        if ($http_cookie !~ "auth=a2Vycnk6dmVkQ2VjLTR6aXpqaS1kaWhwaXI=") {
+            root /var/www/html/staging;
+            try_files /login.html =404;
+            add_header Content-Type text/html;
+            break;
+        }
+
+        return 200 'Kerry AI Staging - Coming Soon!\n';
         add_header Content-Type text/plain;
     }
 }
 
-# Staging server (with auth)
+# Production server (no auth)
 server {
     listen 443 ssl;
-    server_name staging.kerryai.app;
-
-    # SSL configuration (shared with production)
+    server_name kerryai.app;
+    
+    # SSL configuration
     ssl_certificate /etc/nginx/ssl/cloudflare.crt;
     ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
     
-    # SSL settings
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_tickets off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000" always;
-    
-    # Basic auth for all locations
-    auth_basic "Kerry AI Staging";
-    auth_basic_user_file /etc/nginx/.htpasswd;
-
     location / {
-        set $auth_user "";
-        set $auth_pass "";
-        
-        if ($http_authorization ~ "^Basic (.*)$") {
-            set $auth $1;
-        }
-
-        if ($http_authorization = "") {
-            add_header WWW-Authenticate 'Basic realm="Kerry AI Staging"' always;
-            return 401 'Authentication required\n';
-        }
-
-        if ($auth != "a2Vycnk6dmVkQ2VjLTR6aXpqaS1kaWhwaXI=") {
-            add_header WWW-Authenticate 'Basic realm="Kerry AI Staging"' always;
-            return 401 'Invalid credentials\n';
-        }
-
-        return 200 'Kerry AI Staging - Coming Soon!\n';
+        return 200 'KerryAI - Coming Soon!\n';
         add_header Content-Type text/plain;
     }
 }
@@ -227,7 +185,6 @@ rm -f /etc/nginx/sites-enabled/default
 ln -sf /etc/nginx/sites-available/staging /etc/nginx/sites-enabled/
 
 # Test and restart Nginx
-echo "[$(date)] Testing and restarting Nginx..."
 nginx -t && systemctl restart nginx || {
     echo "Nginx configuration test failed!"
     exit 1
@@ -235,4 +192,9 @@ nginx -t && systemctl restart nginx || {
 
 echo "[$(date)] Setup complete successfully!"
 EOF
+
+  provisioner "file" {
+    source      = "${path.module}/files/login.html"
+    destination = "/var/www/html/staging/login.html"
+  }
 }
