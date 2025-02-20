@@ -56,3 +56,8 @@ variable "cloudflare_key" {
   type        = string
   sensitive   = true
 }
+
+variable "ssh_private_key_path" {
+  description = "Path to the SSH private key file"
+  type        = string
+}

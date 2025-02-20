@@ -196,5 +196,12 @@ EOF
   provisioner "file" {
     source      = "${path.module}/files/login.html"
     destination = "/var/www/html/staging/login.html"
+
+    connection {
+      type        = "ssh"
+      user        = "root"
+      private_key = file(var.ssh_private_key_path)
+      host        = self.ipv4_address
+    }
   }
 }
