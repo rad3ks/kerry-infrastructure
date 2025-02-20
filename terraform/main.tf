@@ -133,6 +133,8 @@ server {
     add_header Pragma "no-cache" always;
 
     location / {
+        auth_basic "Restricted Area";  # Double-check auth here too
+        auth_basic_user_file /etc/nginx/.htpasswd;
         return 200 'Authentication required!\n';
     }
 }
