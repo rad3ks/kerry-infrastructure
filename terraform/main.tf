@@ -98,6 +98,7 @@ chmod 600 /etc/nginx/ssl/cloudflare.key
 echo "[$(date)] Setting up authentication..."
 htpasswd -bc /etc/nginx/.htpasswd ${var.staging_username} ${var.staging_password}
 chmod 640 /etc/nginx/.htpasswd
+chown root:www-data /etc/nginx/.htpasswd
 
 # Configure Nginx
 echo "[$(date)] Configuring Nginx..."
@@ -111,7 +112,7 @@ server {
     return 301 https://$host$request_uri;
 }
 
-# Product server configuration
+# Production server configuration
 server {
     listen 443 ssl;
     server_name kerryai.app;
@@ -156,6 +157,7 @@ server {
 
     # Security headers
     add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header Cache-Control "no-store, no-cache, must-revalidate";
 
     # Basic auth at server level only
     auth_basic "Kerry AI Staging";
