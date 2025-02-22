@@ -200,21 +200,7 @@ server {
         ssi on;
         root /var/www/html;
         add_header Content-Type text/html;
-        # Keep the original error status code
-        error_page 404 = @404;
-        error_page 403 = @403;
-        # ... add other status codes as needed
-    }
-
-    # Status-specific named locations
-    location @404 {
-        internal;
-        return 404 /error.html;
-    }
-
-    location @403 {
-        internal;
-        return 403 /error.html;
+        rewrite ^ /error.html break;
     }
 
     # Serve error page
@@ -276,21 +262,7 @@ server {
         ssi on;
         root /var/www/html;
         add_header Content-Type text/html;
-        # Keep the original error status code
-        error_page 404 = @404;
-        error_page 403 = @403;
-        # ... add other status codes as needed
-    }
-
-    # Status-specific named locations
-    location @404 {
-        internal;
-        return 404 /error.html;
-    }
-
-    location @403 {
-        internal;
-        return 403 /error.html;
+        rewrite ^ /error.html break;
     }
 
     # Serve error page
