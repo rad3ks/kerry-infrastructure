@@ -134,8 +134,45 @@ echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
 echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
 chmod 600 /etc/nginx/ssl/cloudflare.key
 
+# Create error messages map
+cat > /etc/nginx/conf.d/error_messages.conf << 'EOL'
+map $status $error_message {
+    400 "Bad request - The server could not understand your request.";
+    401 "Unauthorized - Authentication is required.";
+    403 "Forbidden - You don't have permission to access this resource.";
+    404 "Not Found - The requested resource does not exist.";
+    408 "Request Timeout - The server timed out waiting for the request.";
+    429 "Too Many Requests - Please slow down your requests.";
+    500 "Internal Server Error - Something went wrong on our end.";
+    502 "Bad Gateway - The server received an invalid response.";
+    503 "Service Unavailable - Kerry is experiencing high load.";
+    504 "Gateway Timeout - The server took too long to respond.";
+    default "An unexpected error occurred.";
+}
+EOL
+
+# Create error page
+cat > /var/www/html/error.html << 'HTMLEOF'
+${file("${path.module}/files/error.html")}
+HTMLEOF
+
 # Configure Nginx
 cat > /etc/nginx/sites-available/staging << EOL
+# Create error messages map
+map \$status \$error_message {
+    400 "Bad request - The server could not understand your request.";
+    401 "Unauthorized - Authentication is required.";
+    403 "Forbidden - You don't have permission to access this resource.";
+    404 "Not Found - The requested resource does not exist.";
+    408 "Request Timeout - The server timed out waiting for the request.";
+    429 "Too Many Requests - Please slow down your requests.";
+    500 "Internal Server Error - Something went wrong on our end.";
+    502 "Bad Gateway - The server received an invalid response.";
+    503 "Service Unavailable - Kerry is experiencing high load.";
+    504 "Gateway Timeout - The server took too long to respond.";
+    default "An unexpected error occurred.";
+}
+
 # Rate limiting zones
 limit_req_zone \$binary_remote_addr zone=login_limit:10m rate=1r/s;
 limit_req_zone \$binary_remote_addr zone=general_limit:10m rate=10r/s;
@@ -144,28 +181,43 @@ limit_req_zone \$binary_remote_addr zone=general_limit:10m rate=10r/s;
 server {
     listen 443 ssl;
     server_name staging.kerryai.app;
-
+    
     # SSL configuration
     ssl_certificate /etc/nginx/ssl/cloudflare.crt;
     ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
     
-    # SSL settings
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_tickets off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-
+    # Enable SSI for error pages
+    ssi on;
+    
     root /var/www/html/staging;
 
-    # Strict rate limit for login page
+    # Custom error pages for all error codes
+    error_page 400 401 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418 421 422 423 424 426 428 429 431 451 500 501 502 503 504 505 506 507 508 510 511 = @error;
+
+    # Named location for error handling
+    location @error {
+        internal;
+        ssi on;
+        root /var/www/html;
+        add_header Content-Type text/html;
+        rewrite ^ /error.html break;
+    }
+
+    # Serve error page
+    location = /error.html {
+        internal;
+        ssi on;
+        root /var/www/html;
+        add_header Content-Type text/html;
+    }
+
+    # Login page - no auth check here
     location = /login.html {
         limit_req zone=login_limit burst=5 nodelay;
         add_header Content-Type text/html;
     }
 
-    # General rate limit for other requests
+    # All other locations
     location / {
         limit_req zone=general_limit burst=20;
         
@@ -179,12 +231,17 @@ server {
             return 302 /login.html;
         }
 
+        # Return 404 for all paths except root
+        if (\$request_uri != "/") {
+            return 404;
+        }
+
         return 200 'Kerry AI Staging - Coming Soon!\n';
         add_header Content-Type text/plain;
     }
 }
 
-# Production server (no auth)
+# Production server
 server {
     listen 443 ssl;
     server_name kerryai.app;
@@ -193,17 +250,46 @@ server {
     ssl_certificate /etc/nginx/ssl/cloudflare.crt;
     ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
     
+    # Enable SSI for error pages
+    ssi on;
+    
+    # Custom error pages for all error codes
+    error_page 400 401 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418 421 422 423 424 426 428 429 431 451 500 501 502 503 504 505 506 507 508 510 511 = @error;
+
+    # Named location for error handling
+    location @error {
+        internal;
+        ssi on;
+        root /var/www/html;
+        add_header Content-Type text/html;
+        rewrite ^ /error.html break;
+    }
+
+    # Serve error page
+    location = /error.html {
+        internal;
+        ssi on;
+        root /var/www/html;
+        add_header Content-Type text/html;
+    }
+    
     location / {
         limit_req zone=general_limit burst=20;
+        
+        # Return 404 for all paths except root
+        if (\$request_uri != "/") {
+            return 404;
+        }
+
         return 200 'KerryAI - Coming Soon!\n';
         add_header Content-Type text/plain;
     }
 }
 
-# HTTP to HTTPS redirect
+# HTTP to HTTPS redirect for all domains
 server {
-    listen 80;
-    server_name kerryai.app staging.kerryai.app;
+    listen 80 default_server;
+    server_name _;
     return 301 https://\$host\$request_uri;
 }
 EOL

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kerry AI - Service Status</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #f5f5f5;
+        }
+        .status-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 90%;
+        }
+        .status-header {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+        .error-details {
+            background: #f8f8f8;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+            display: none;
+        }
+        .expand-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+        .expand-button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="status-box">
+        <div class="status-header">
+            <h2>KerryAI is currently experiencing more jobs than it can handle.</h2>
+        </div>
+        <div class="status-content">
+            <p>Unfortunately Kerry is experiencing more jobs to handle than its capable at the moment.</p>
+            <p>We're working hard to bring Kerry back!</p>
+            
+            <button class="expand-button" onclick="toggleError()">Show Technical Details</button>
+            <div id="errorDetails" class="error-details">
+                Error Code: <!--# echo var="status" --> <br>
+                Message: <!--# echo var="error_message" -->
+            </div>
+        </div>
+    </div>
+    <script>
+        function toggleError() {
+            const details = document.getElementById('errorDetails');
+            const button = document.querySelector('.expand-button');
+            if (details.style.display === 'none' || !details.style.display) {
+                details.style.display = 'block';
+                button.textContent = 'Hide Technical Details';
+            } else {
+                details.style.display = 'none';
+                button.textContent = 'Show Technical Details';
+            }
+        }
+    </script>
+</body>
+</html>
