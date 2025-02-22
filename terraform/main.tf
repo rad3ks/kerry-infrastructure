@@ -114,7 +114,26 @@ echo "[$(date)] Starting server setup..."
 # Install required packages
 echo "[$(date)] Installing packages..."
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
+DEBIAN_FRONTEND=noninteractive apt-get install -y nginx docker.io docker-compose
+
+# Create app directory and copy docker-compose
+mkdir -p /opt/kerry
+
+# Clone repositories
+git clone ${var.frontend_repo_url} /opt/kerry/frontend
+git clone ${var.backend_repo_url} /opt/kerry/backend
+
+# Create docker-compose file
+cat > /opt/kerry/docker-compose.yml << 'DOCKEREOF'
+${templatefile("${path.module}/files/docker-compose.yml.tftpl", {
+    database_url = var.database_url,
+    redis_url = var.redis_url
+})}
+DOCKEREOF
+
+# Start services
+cd /opt/kerry
+docker-compose up -d
 
 # Create necessary directories
 mkdir -p /var/www/html/staging
@@ -217,31 +236,27 @@ server {
         add_header Content-Type text/html;
     }
 
-    # All other locations
+    # Docker services only on staging
     location / {
-        limit_req zone=general_limit burst=20;
-        
-        # Skip auth check for login page
-        if (\$request_uri = /login.html) {
-            break;
-        }
-        
-        # Check for auth cookie and redirect if not present
-        if (\$http_cookie !~ "auth=${base64encode("${var.staging_username}:${var.staging_password}")}") {
-            return 302 /login.html;
-        }
+        proxy_pass http://localhost:3000;  # Frontend
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
 
-        # Return 404 for all paths except root
-        if (\$request_uri != "/") {
-            return 404;
-        }
-
-        return 200 'Kerry AI Staging - Coming Soon!\n';
-        add_header Content-Type text/plain;
+    location /api {
+        proxy_pass http://localhost:8000;  # Backend
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
     }
 }
 
-# Production server
+# Production server - remove Docker proxy and keep static response
 server {
     listen 443 ssl;
     server_name kerryai.app;
@@ -277,7 +292,7 @@ server {
         limit_req zone=general_limit burst=20;
         
         # Return 404 for all paths except root
-        if (\$request_uri != "/") {
+        if ($request_uri != "/") {
             return 404;
         }
 

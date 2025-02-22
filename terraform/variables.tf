@@ -56,3 +56,25 @@ variable "cloudflare_key" {
   type        = string
   sensitive   = true
 }
+
+variable "frontend_repo_url" {
+  description = "URL of the frontend repository"
+  type        = string
+}
+
+variable "backend_repo_url" {
+  description = "URL of the backend repository"
+  type        = string
+}
+
+variable "database_url" {
+  description = "PostgreSQL connection string"
+  type        = string
+  sensitive   = true
+}
+
+variable "redis_url" {
+  description = "Redis connection string"
+  type        = string
+  sensitive   = true
+}
