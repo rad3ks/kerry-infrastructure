@@ -55,7 +55,7 @@
             const password = document.getElementById("password").value;
             if (username === "${staging_username}" && password === "${staging_password}") {
                 document.cookie = "auth=${auth_token}; path=/";
-                window.location.reload();
+                window.location.href = "/";
             } else {
                 alert("Invalid credentials");
             }

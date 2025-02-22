@@ -160,7 +160,7 @@ server {
     }
 
     location / {
-        if ($http_cookie !~ "auth=a2Vycnk6dmVkQ2VjLTR6aXpqaS1kaWhwaXI=") {
+        if ($http_cookie !~ "auth=${base64encode("${var.staging_username}:${var.staging_password}")}") {
             return 302 /login.html;
         }
 
