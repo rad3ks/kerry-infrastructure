@@ -152,10 +152,10 @@ map $status $error_message {
 EOL
 
 # Configure Nginx
-cat > /etc/nginx/sites-available/staging << 'EOL'
+cat > /etc/nginx/sites-available/staging << EOL
 # Rate limiting zones
-limit_req_zone $binary_remote_addr zone=login_limit:10m rate=1r/s;
-limit_req_zone $binary_remote_addr zone=general_limit:10m rate=10r/s;
+limit_req_zone \$binary_remote_addr zone=login_limit:10m rate=1r/s;
+limit_req_zone \$binary_remote_addr zone=general_limit:10m rate=10r/s;
 
 # Staging server (with HTML form auth)
 server {
@@ -193,7 +193,13 @@ server {
     location / {
         limit_req zone=general_limit burst=20;
         
-        if ($http_cookie !~ "auth=${base64encode("${var.staging_username}:${var.staging_password}")}") {
+        # Skip auth check for login page
+        if (\$request_uri = /login.html) {
+            break;
+        }
+        
+        # Check for auth cookie and redirect if not present
+        if (\$http_cookie !~ "auth=${base64encode("${var.staging_username}:${var.staging_password}")}") {
             return 302 /login.html;
         }
 
@@ -245,7 +251,7 @@ server {
 server {
     listen 80;
     server_name kerryai.app staging.kerryai.app;
-    return 301 https://$host$request_uri;
+    return 301 https://\$host\$request_uri;
 }
 EOL
 
