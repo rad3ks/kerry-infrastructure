@@ -136,6 +136,10 @@ chmod 600 /etc/nginx/ssl/cloudflare.key
 
 # Configure Nginx
 cat > /etc/nginx/sites-available/staging << 'EOL'
+# Rate limiting zones
+limit_req_zone $binary_remote_addr zone=login_limit:10m rate=1r/s;
+limit_req_zone $binary_remote_addr zone=general_limit:10m rate=10r/s;
+
 # Staging server (with HTML form auth)
 server {
     listen 443 ssl;
@@ -155,11 +159,16 @@ server {
 
     root /var/www/html/staging;
 
+    # Strict rate limit for login page
     location = /login.html {
+        limit_req zone=login_limit burst=5 nodelay;
         add_header Content-Type text/html;
     }
 
+    # General rate limit for other requests
     location / {
+        limit_req zone=general_limit burst=20;
+        
         if ($http_cookie !~ "auth=${base64encode("${var.staging_username}:${var.staging_password}")}") {
             return 302 /login.html;
         }
@@ -179,6 +188,7 @@ server {
     ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
     
     location / {
+        limit_req zone=general_limit burst=20;
         return 200 'KerryAI - Coming Soon!\n';
         add_header Content-Type text/plain;
     }
