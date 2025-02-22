@@ -155,11 +155,13 @@ server {
 
     root /var/www/html/staging;
 
+    location = /login.html {
+        add_header Content-Type text/html;
+    }
+
     location / {
         if ($http_cookie !~ "auth=a2Vycnk6dmVkQ2VjLTR6aXpqaS1kaWhwaXI=") {
-            try_files /login.html =404;
-            add_header Content-Type text/html;
-            break;
+            return 302 /login.html;
         }
 
         return 200 'Kerry AI Staging - Coming Soon!\n';
