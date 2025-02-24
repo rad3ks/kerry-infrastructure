@@ -140,7 +140,7 @@ ls -la /etc/nginx/ssl/
 
 # Configure Nginx after SSL is set up
 echo "[$(date)] Configuring nginx..."
-cat > /etc/nginx/sites-available/default << 'EOL'
+cat > /etc/nginx/sites-available/staging << 'EOL'
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -166,9 +166,17 @@ server {
 }
 EOL
 
-# Test and restart Nginx
-echo "[$(date)] Testing and restarting nginx..."
-nginx -t && systemctl restart nginx
+# Create symlink to enable the site (fix the path)
+echo "[$(date)] Enabling nginx configuration..."
+ln -sf /etc/nginx/sites-available/staging /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# Verify nginx config and restart
+echo "[$(date)] Testing nginx configuration..."
+nginx -t
+
+echo "[$(date)] Restarting nginx..."
+systemctl restart nginx
 
 # Clone repositories
 git clone ${var.frontend_repo_url} /opt/kerry/frontend
