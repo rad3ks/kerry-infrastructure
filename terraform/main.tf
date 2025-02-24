@@ -116,7 +116,14 @@ echo "[$(date)] Installing nginx..."
 apt-get update
 apt-get install -y nginx
 
-# Create SSL directory and set permissions
+# Wait a moment to ensure nginx service is ready
+sleep 5
+
+# Remove default config
+rm -f /etc/nginx/sites-enabled/default
+
+# Now create SSL directory and set permissions
+echo "[$(date)] Configuring SSL..."
 mkdir -p /etc/nginx/ssl
 chmod 700 /etc/nginx/ssl
 
@@ -124,6 +131,44 @@ chmod 700 /etc/nginx/ssl
 echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
 echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
 chmod 600 /etc/nginx/ssl/cloudflare.key
+
+# Force filesystem sync
+sync
+
+# Verify SSL setup
+ls -la /etc/nginx/ssl/
+
+# Configure Nginx after SSL is set up
+echo "[$(date)] Configuring nginx..."
+cat > /etc/nginx/sites-available/default << 'EOL'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name staging.kerryai.app;
+    
+    ssl_certificate /etc/nginx/ssl/cloudflare.crt;
+    ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
+    
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+EOL
+
+# Test and restart Nginx
+echo "[$(date)] Testing and restarting nginx..."
+nginx -t && systemctl restart nginx
 
 # Clone repositories
 git clone ${var.frontend_repo_url} /opt/kerry/frontend
