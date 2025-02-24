@@ -138,6 +138,21 @@ sync
 # Verify SSL setup
 ls -la /etc/nginx/ssl/
 
+# Create necessary directories
+echo "[$(date)] Creating web directories..."
+mkdir -p /var/www/html/staging
+chmod 755 /var/www/html/staging
+
+# Create login.html with proper credentials
+echo "[$(date)] Creating login.html..."
+cat > /var/www/html/staging/login.html << 'HTMLEOF'
+${templatefile("${path.module}/files/login.html", {
+    staging_username = var.staging_username,
+    staging_password = var.staging_password,
+    auth_token = base64encode("${var.staging_username}:${var.staging_password}")
+})}
+HTMLEOF
+
 # Configure Nginx after SSL is set up
 echo "[$(date)] Configuring nginx..."
 cat > /etc/nginx/sites-available/staging << 'EOL'
@@ -179,15 +194,6 @@ echo "[$(date)] Enabling nginx configuration..."
 ln -sf /etc/nginx/sites-available/staging /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 
-# Create login.html with proper credentials
-cat > /var/www/html/staging/login.html << 'HTMLEOF'
-${templatefile("${path.module}/files/login.html", {
-    staging_username = var.staging_username,
-    staging_password = var.staging_password,
-    auth_token = base64encode("${var.staging_username}:${var.staging_password}")
-})}
-HTMLEOF
-
 # Verify nginx config and restart
 echo "[$(date)] Testing nginx configuration..."
 nginx -t
@@ -198,9 +204,6 @@ systemctl restart nginx
 # Clone repositories
 git clone ${var.frontend_repo_url} /opt/kerry/frontend
 git clone ${var.backend_repo_url} /opt/kerry/backend
-
-# Create necessary directories
-mkdir -p /var/www/html/staging
 
 # Create error messages map
 cat > /etc/nginx/conf.d/error_messages.conf << 'EOL'
