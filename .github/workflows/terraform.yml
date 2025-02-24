@@ -46,6 +46,10 @@ jobs:
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
+        TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
+        TF_VAR_redis_url: ${{ secrets.REDIS_URL }}
+        TF_VAR_registry_username: ${{ secrets.REGISTRY_USERNAME }}
+        TF_VAR_registry_password: ${{ secrets.REGISTRY_PASSWORD }}
         TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
         TF_VAR_server_name: "kerry-server"
         TF_VAR_server_type: "cx22"
@@ -53,6 +57,9 @@ jobs:
         TF_VAR_staging_password: ${{ secrets.STAGING_PASSWORD }}
         TF_VAR_cloudflare_cert: ${{ secrets.CLOUDFLARE_CERT }}
         TF_VAR_cloudflare_key: ${{ secrets.CLOUDFLARE_KEY }}
+        TF_VAR_frontend_repo_url: ${{ secrets.FRONTEND_REPO_URL }}
+        TF_VAR_backend_repo_url: ${{ secrets.BACKEND_REPO_URL }}
+        TF_VAR_frontend_image_tag: ${{ secrets.FRONTEND_IMAGE_TAG }}
       run: terraform plan -input=false
 
     - name: Terraform Apply
@@ -60,6 +67,10 @@ jobs:
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
+        TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
+        TF_VAR_redis_url: ${{ secrets.REDIS_URL }}
+        TF_VAR_registry_username: ${{ secrets.REGISTRY_USERNAME }}
+        TF_VAR_registry_password: ${{ secrets.REGISTRY_PASSWORD }}
         TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
         TF_VAR_server_name: "kerry-server"
         TF_VAR_server_type: "cx22"
@@ -67,4 +78,7 @@ jobs:
         TF_VAR_staging_password: ${{ secrets.STAGING_PASSWORD }}
         TF_VAR_cloudflare_cert: ${{ secrets.CLOUDFLARE_CERT }}
         TF_VAR_cloudflare_key: ${{ secrets.CLOUDFLARE_KEY }}
+        TF_VAR_frontend_repo_url: ${{ secrets.FRONTEND_REPO_URL }}
+        TF_VAR_backend_repo_url: ${{ secrets.BACKEND_REPO_URL }}
+        TF_VAR_frontend_image_tag: ${{ secrets.FRONTEND_IMAGE_TAG }}
       run: terraform apply -auto-approve -input=false
