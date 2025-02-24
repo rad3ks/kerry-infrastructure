@@ -175,7 +175,7 @@ server {
     # Single location block for root path
     location = / {
         if ($cookie_auth = "") {
-            try_files /login.html =404;
+            return 200 /login.html;
         }
         
         proxy_pass http://localhost:3000;
@@ -184,6 +184,12 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
+    }
+
+    # Serve the login page
+    location = /login.html {
+        internal;
+        root /var/www/html/staging;
     }
 }
 EOL
