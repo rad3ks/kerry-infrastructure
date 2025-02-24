@@ -116,13 +116,21 @@ echo "[$(date)] Installing nginx..."
 apt-get update
 apt-get install -y nginx
 
+# Create SSL directory and set permissions
+mkdir -p /etc/nginx/ssl
+chmod 700 /etc/nginx/ssl
+
+# Install SSL certificates
+echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
+echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
+chmod 600 /etc/nginx/ssl/cloudflare.key
+
 # Clone repositories
 git clone ${var.frontend_repo_url} /opt/kerry/frontend
 git clone ${var.backend_repo_url} /opt/kerry/backend
 
 # Create necessary directories
 mkdir -p /var/www/html/staging
-mkdir -p /etc/nginx/ssl
 
 # Create login page
 cat > /var/www/html/staging/login.html << 'HTMLEOF'
@@ -132,11 +140,6 @@ ${templatefile("${path.module}/files/login.html", {
   auth_token = base64encode("${var.staging_username}:${var.staging_password}")
 })}
 HTMLEOF
-
-# Setup SSL
-echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
-echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
-chmod 600 /etc/nginx/ssl/cloudflare.key
 
 # Create error messages map
 cat > /etc/nginx/conf.d/error_messages.conf << 'EOL'
@@ -223,7 +226,7 @@ server {
 
     # Docker services only on staging
     location / {
-        proxy_pass http://localhost:3000;  # Frontend
+        proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
