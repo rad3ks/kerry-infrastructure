@@ -172,13 +172,12 @@ server {
     
     root /var/www/html/staging;
     
-    # Serve login.html for root path
+    # Single location block for root path
     location = / {
-        try_files /login.html =404;
-    }
-    
-    # All other paths go to the frontend
-    location / {
+        if ($cookie_auth = "") {
+            try_files /login.html =404;
+        }
+        
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
