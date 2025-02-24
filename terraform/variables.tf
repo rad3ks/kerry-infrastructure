@@ -82,6 +82,7 @@ variable "redis_url" {
 variable "registry_url" {
   description = "URL of the container registry"
   type        = string
+  default     = "ghcr.io"
 }
 
 variable "registry_username" {
