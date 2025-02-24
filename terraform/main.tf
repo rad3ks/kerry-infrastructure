@@ -155,6 +155,14 @@ server {
     ssl_certificate /etc/nginx/ssl/cloudflare.crt;
     ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
     
+    root /var/www/html/staging;
+    
+    # Serve login.html for root path
+    location = / {
+        try_files /login.html =404;
+    }
+    
+    # All other paths go to the frontend
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -171,6 +179,15 @@ echo "[$(date)] Enabling nginx configuration..."
 ln -sf /etc/nginx/sites-available/staging /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 
+# Create login.html with proper credentials
+cat > /var/www/html/staging/login.html << 'HTMLEOF'
+${templatefile("${path.module}/files/login.html", {
+    staging_username = var.staging_username,
+    staging_password = var.staging_password,
+    auth_token = base64encode("${var.staging_username}:${var.staging_password}")
+})}
+HTMLEOF
+
 # Verify nginx config and restart
 echo "[$(date)] Testing nginx configuration..."
 nginx -t
@@ -184,15 +201,6 @@ git clone ${var.backend_repo_url} /opt/kerry/backend
 
 # Create necessary directories
 mkdir -p /var/www/html/staging
-
-# Create login page
-cat > /var/www/html/staging/login.html << 'HTMLEOF'
-${templatefile("${path.module}/files/login.html", {
-  staging_username = var.staging_username,
-  staging_password = var.staging_password,
-  auth_token = base64encode("${var.staging_username}:${var.staging_password}")
-})}
-HTMLEOF
 
 # Create error messages map
 cat > /etc/nginx/conf.d/error_messages.conf << 'EOL'
