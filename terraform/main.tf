@@ -175,7 +175,7 @@ server {
     # Single location block for root path
     location = / {
         if ($cookie_auth = "") {
-            return 200 /login.html;
+            rewrite ^ /login.html break;
         }
         
         proxy_pass http://localhost:3000;
@@ -188,7 +188,6 @@ server {
 
     # Serve the login page
     location = /login.html {
-        internal;
         root /var/www/html/staging;
     }
 }
