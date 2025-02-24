@@ -99,6 +99,6 @@ variable "registry_password" {
 
 variable "frontend_image_tag" {
   description = "Tag for frontend container image"
-  type        = string
+  type        = string  
   default     = "latest"
 }

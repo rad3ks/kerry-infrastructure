@@ -96,18 +96,24 @@ ${templatefile("${path.module}/files/docker-compose.yml.tftpl", {
 })}
 DOCKEREOF
 
-# Pull the latest frontend image
-docker pull ${var.registry_url}/kerry-frontend:latest
-
-# Create and start the frontend container
-docker run -d \
-  --name kerry-frontend \
-  -p 3000:80 \
-  --restart always \
-  ${var.registry_url}/kerry-frontend:latest
+# Pull the latest frontend image (with error handling)
+echo "[$(date)] Attempting to pull frontend image..."
+if docker pull ${var.registry_url}/kerry-frontend:latest; then
+    echo "[$(date)] Successfully pulled frontend image"
+    
+    # Create and start the frontend container
+    docker run -d \
+      --name kerry-frontend \
+      -p 3000:80 \
+      --restart always \
+      ${var.registry_url}/kerry-frontend:latest
+else
+    echo "[$(date)] Warning: Failed to pull frontend image. Continuing with setup..."
+fi
 
 # Install nginx
 echo "[$(date)] Installing nginx..."
+apt-get update
 apt-get install -y nginx
 
 # Clone repositories
