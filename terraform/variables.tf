@@ -78,3 +78,26 @@ variable "redis_url" {
   type        = string
   sensitive   = true
 }
+
+variable "registry_url" {
+  description = "URL of the container registry"
+  type        = string
+}
+
+variable "registry_username" {
+  description = "Username for container registry"
+  type        = string
+  sensitive   = true
+}
+
+variable "registry_password" {
+  description = "Password for container registry"
+  type        = string
+  sensitive   = true
+}
+
+variable "frontend_image_tag" {
+  description = "Tag for frontend container image"
+  type        = string
+  default     = "latest"
+}

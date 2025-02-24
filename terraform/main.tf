@@ -111,17 +111,11 @@ exec 1> >(tee -a /var/log/user-data.log) 2>&1
 
 echo "[$(date)] Starting server setup..."
 
-# Install required packages
-echo "[$(date)] Installing packages..."
-apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y nginx docker.io docker-compose
+# Install Docker and Docker Compose
+${file("${path.module}/files/docker-install.sh")}
 
-# Create app directory and copy docker-compose
+# Create app directory
 mkdir -p /opt/kerry
-
-# Clone repositories
-git clone ${var.frontend_repo_url} /opt/kerry/frontend
-git clone ${var.backend_repo_url} /opt/kerry/backend
 
 # Create docker-compose file
 cat > /opt/kerry/docker-compose.yml << 'DOCKEREOF'
@@ -131,9 +125,23 @@ ${templatefile("${path.module}/files/docker-compose.yml.tftpl", {
 })}
 DOCKEREOF
 
-# Start services
-cd /opt/kerry
-docker-compose up -d
+# Pull the latest frontend image
+docker pull ${var.registry_url}/kerry-frontend:latest
+
+# Create and start the frontend container
+docker run -d \
+  --name kerry-frontend \
+  -p 3000:80 \
+  --restart always \
+  ${var.registry_url}/kerry-frontend:latest
+
+# Install nginx
+echo "[$(date)] Installing nginx..."
+apt-get install -y nginx
+
+# Clone repositories
+git clone ${var.frontend_repo_url} /opt/kerry/frontend
+git clone ${var.backend_repo_url} /opt/kerry/backend
 
 # Create necessary directories
 mkdir -p /var/www/html/staging
@@ -318,4 +326,10 @@ nginx -t && systemctl restart nginx
 
 echo "[$(date)] Setup completed successfully!"
 EOF
+}
+
+# Add variables for container registry
+variable "registry_url" {
+  description = "URL of the container registry"
+  type        = string
 }

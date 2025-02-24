@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  frontend:
+    platform: linux/amd64
+    build:
+      context: ../kerry-frontend
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8000
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../kerry-frontend:/app
+      - /app/node_modules
+
+  backend:
+    build:
+      context: ../kerry-backend
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://user:password@localhost:5432/kerry
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./data/resumes:/app/Resumes
+    ports:
+      - "8000:8000"
+
+  redis:
+    image: redis:alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+volumes:
+  redis_data: 
