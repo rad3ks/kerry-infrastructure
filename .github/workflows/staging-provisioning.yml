@@ -1,4 +1,4 @@
-name: 'Terraform'
+name: 'Staging Provisioning'
 
 on:
   push:
