@@ -56,3 +56,49 @@ variable "cloudflare_key" {
   type        = string
   sensitive   = true
 }
+
+variable "frontend_repo_url" {
+  description = "URL of the frontend repository"
+  type        = string
+}
+
+variable "backend_repo_url" {
+  description = "URL of the backend repository"
+  type        = string
+}
+
+variable "database_url" {
+  description = "PostgreSQL connection string"
+  type        = string
+  sensitive   = true
+}
+
+variable "redis_url" {
+  description = "Redis connection string"
+  type        = string
+  sensitive   = true
+}
+
+variable "registry_url" {
+  description = "URL of the container registry"
+  type        = string
+  default     = "ghcr.io"
+}
+
+variable "registry_username" {
+  description = "Username for container registry"
+  type        = string
+  sensitive   = true
+}
+
+variable "registry_password" {
+  description = "Password for container registry"
+  type        = string
+  sensitive   = true
+}
+
+variable "frontend_image_tag" {
+  description = "Tag for frontend container image"
+  type        = string  
+  default     = "latest"
+}

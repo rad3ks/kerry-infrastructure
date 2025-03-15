@@ -8,80 +8,51 @@ resource "hcloud_ssh_key" "default" {
 resource "hcloud_firewall" "default" {
   name = "kerry-firewall"
 
-  # SSH access - Temporarily open to all
+  # SSH access - Consider restricting to specific IPs
   rule {
     direction = "in"
     protocol  = "tcp"
     port      = "22"
     source_ips = [
-      "0.0.0.0/0",
+      "0.0.0.0/0",  # TODO: Restrict to specific IP ranges
       "::/0"
     ]
   }
 
-  # HTTP/HTTPS access - Cloudflare IPs only
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "80"
-    source_ips = [
-      # IPv4 ranges
-      "173.245.48.0/20",
-      "103.21.244.0/22",
-      "103.22.200.0/22",
-      "103.31.4.0/22",
-      "141.101.64.0/18",
-      "108.162.192.0/18",
-      "190.93.240.0/20",
-      "188.114.96.0/20",
-      "197.234.240.0/22",
-      "198.41.128.0/17",
-      "162.158.0.0/15",
-      "104.16.0.0/13",
-      "104.24.0.0/14",
-      "172.64.0.0/13",
-      "131.0.72.0/22",
-      # IPv6 ranges
-      "2400:cb00::/32",
-      "2606:4700::/32",
-      "2803:f800::/32",
-      "2405:b500::/32",
-      "2405:8100::/32",
-      "2a06:98c0::/29",
-      "2c0f:f248::/32"
-    ]
-  }
-
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "443"
-    source_ips = [
-      # IPv4 ranges
-      "173.245.48.0/20",
-      "103.21.244.0/22",
-      "103.22.200.0/22",
-      "103.31.4.0/22",
-      "141.101.64.0/18",
-      "108.162.192.0/18",
-      "190.93.240.0/20",
-      "188.114.96.0/20",
-      "197.234.240.0/22",
-      "198.41.128.0/17",
-      "162.158.0.0/15",
-      "104.16.0.0/13",
-      "104.24.0.0/14",
-      "172.64.0.0/13",
-      "131.0.72.0/22",
-      # IPv6 ranges
-      "2400:cb00::/32",
-      "2606:4700::/32",
-      "2803:f800::/32",
-      "2405:b500::/32",
-      "2405:8100::/32",
-      "2a06:98c0::/29",
-      "2c0f:f248::/32"
-    ]
+  # HTTP/HTTPS access - Using local variable for Cloudflare IPs
+  dynamic "rule" {
+    for_each = toset(["80", "443"])
+    content {
+      direction = "in"
+      protocol  = "tcp"
+      port      = rule.value
+      source_ips = [
+        # IPv4 ranges
+        "173.245.48.0/20",
+        "103.21.244.0/22",
+        "103.22.200.0/22",
+        "103.31.4.0/22",
+        "141.101.64.0/18",
+        "108.162.192.0/18",
+        "190.93.240.0/20",
+        "188.114.96.0/20",
+        "197.234.240.0/22",
+        "198.41.128.0/17",
+        "162.158.0.0/15",
+        "104.16.0.0/13",
+        "104.24.0.0/14",
+        "172.64.0.0/13",
+        "131.0.72.0/22",
+        # IPv6 ranges
+        "2400:cb00::/32",
+        "2606:4700::/32",
+        "2803:f800::/32",
+        "2405:b500::/32",
+        "2405:8100::/32",
+        "2a06:98c0::/29",
+        "2c0f:f248::/32"
+      ]
+    }
   }
 }
 
@@ -111,28 +82,133 @@ exec 1> >(tee -a /var/log/user-data.log) 2>&1
 
 echo "[$(date)] Starting server setup..."
 
-# Install required packages
-echo "[$(date)] Installing packages..."
-apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
+# Install Docker and Docker Compose
+${file("${path.module}/files/docker-install.sh")}
 
-# Create necessary directories
-mkdir -p /var/www/html/staging
-mkdir -p /etc/nginx/ssl
+# Create app directory
+mkdir -p /opt/kerry
 
-# Create login page
-cat > /var/www/html/staging/login.html << 'HTMLEOF'
-${templatefile("${path.module}/files/login.html", {
-  staging_username = var.staging_username,
-  staging_password = var.staging_password,
-  auth_token = base64encode("${var.staging_username}:${var.staging_password}")
+# Create docker-compose file
+cat > /opt/kerry/docker-compose.yml << 'DOCKEREOF'
+${templatefile("${path.module}/files/docker-compose.yml.tftpl", {
+    database_url = var.database_url,
+    redis_url = var.redis_url
 })}
-HTMLEOF
+DOCKEREOF
 
-# Setup SSL
+# Pull the latest frontend image (with error handling)
+echo "[$(date)] Attempting to pull frontend image..."
+if docker pull ${var.registry_url}/kerry-frontend:latest; then
+    echo "[$(date)] Successfully pulled frontend image"
+    
+    # Create and start the frontend container
+    docker run -d \
+      --name kerry-frontend \
+      -p 3000:80 \
+      --restart always \
+      ${var.registry_url}/kerry-frontend:latest
+else
+    echo "[$(date)] Warning: Failed to pull frontend image. Continuing with setup..."
+fi
+
+# Install nginx
+echo "[$(date)] Installing nginx..."
+apt-get update
+apt-get install -y nginx
+
+# Wait a moment to ensure nginx service is ready
+sleep 5
+
+# Remove default config
+rm -f /etc/nginx/sites-enabled/default
+
+# Now create SSL directory and set permissions
+echo "[$(date)] Configuring SSL..."
+mkdir -p /etc/nginx/ssl
+chmod 700 /etc/nginx/ssl
+
+# Install SSL certificates
 echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
 echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
 chmod 600 /etc/nginx/ssl/cloudflare.key
+
+# Force filesystem sync
+sync
+
+# Verify SSL setup
+ls -la /etc/nginx/ssl/
+
+# Create necessary directories
+echo "[$(date)] Creating web directories..."
+mkdir -p /var/www/html/staging
+chmod 755 /var/www/html/staging
+
+# Create login.html with proper credentials
+echo "[$(date)] Creating login.html..."
+cat > /var/www/html/staging/login.html << 'HTMLEOF'
+${templatefile("${path.module}/files/login.html", {
+    staging_username = var.staging_username,
+    staging_password = var.staging_password,
+    auth_token = base64encode("${var.staging_username}:${var.staging_password}")
+})}
+HTMLEOF
+
+# Configure Nginx after SSL is set up
+echo "[$(date)] Configuring nginx..."
+cat > /etc/nginx/sites-available/staging << 'EOL'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name staging.kerryai.app;
+    
+    ssl_certificate /etc/nginx/ssl/cloudflare.crt;
+    ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
+    
+    root /var/www/html/staging;
+    
+    # Single location block for root path
+    location = / {
+        if ($cookie_auth = "") {
+            return 302 /login.html;
+        }
+        
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Serve the login page
+    location = /login.html {
+        root /var/www/html/staging;
+        add_header Content-Type text/html;
+    }
+}
+EOL
+
+# Create symlink to enable the site (fix the path)
+echo "[$(date)] Enabling nginx configuration..."
+ln -sf /etc/nginx/sites-available/staging /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# Verify nginx config and restart
+echo "[$(date)] Testing nginx configuration..."
+nginx -t
+
+echo "[$(date)] Restarting nginx..."
+systemctl restart nginx
+
+# Clone repositories
+git clone ${var.frontend_repo_url} /opt/kerry/frontend
+git clone ${var.backend_repo_url} /opt/kerry/backend
 
 # Create error messages map
 cat > /etc/nginx/conf.d/error_messages.conf << 'EOL'
@@ -217,31 +293,27 @@ server {
         add_header Content-Type text/html;
     }
 
-    # All other locations
+    # Docker services only on staging
     location / {
-        limit_req zone=general_limit burst=20;
-        
-        # Skip auth check for login page
-        if (\$request_uri = /login.html) {
-            break;
-        }
-        
-        # Check for auth cookie and redirect if not present
-        if (\$http_cookie !~ "auth=${base64encode("${var.staging_username}:${var.staging_password}")}") {
-            return 302 /login.html;
-        }
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
 
-        # Return 404 for all paths except root
-        if (\$request_uri != "/") {
-            return 404;
-        }
-
-        return 200 'Kerry AI Staging - Coming Soon!\n';
-        add_header Content-Type text/plain;
+    location /api {
+        proxy_pass http://localhost:8000;  # Backend
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
     }
 }
 
-# Production server
+# Production server - remove Docker proxy and keep static response
 server {
     listen 443 ssl;
     server_name kerryai.app;
@@ -277,7 +349,7 @@ server {
         limit_req zone=general_limit burst=20;
         
         # Return 404 for all paths except root
-        if (\$request_uri != "/") {
+        if ($request_uri != "/") {
             return 404;
         }
 
