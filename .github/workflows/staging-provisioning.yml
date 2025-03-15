@@ -39,19 +39,15 @@ jobs:
         disable_aws_client_checksums = true
         EOF
 
-    - name: Terraform Init with Local Backend
+    - name: Remove Local Backend Override
+      run: |
+        # Remove the local backend override if it exists
+        rm -f override.tf
+
+    - name: Terraform Init
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
-      run: |
-        # Create a local backend override
-        cat > override.tf << EOF
-        terraform {
-          backend "local" {}
-        }
-        EOF
-        
-        # Initialize with local backend
-        terraform init -reconfigure
+      run: terraform init -reconfigure -backend-config=backend.hcl
 
     - name: Terraform Format
       run: terraform fmt
