@@ -168,79 +168,9 @@ ${templatefile("${path.module}/files/login.html", {
 })}
 HTMLEOF
 
-# Configure Nginx after SSL is set up
-echo "[$(date)] Configuring nginx..."
-cat > /etc/nginx/sites-available/staging << 'EOL'
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name _;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl;
-    server_name staging.kerryai.app;
-    
-    ssl_certificate /etc/nginx/ssl/cloudflare.crt;
-    ssl_certificate_key /etc/nginx/ssl/cloudflare.key;
-    
-    root /var/www/html/staging;
-    
-    # Single location block for root path
-    location = / {
-        if ($cookie_auth = "") {
-            return 302 /login.html;
-        }
-        
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # Serve the login page
-    location = /login.html {
-        root /var/www/html/staging;
-        add_header Content-Type text/html;
-    }
-}
-EOL
-
-# Create symlink to enable the site (fix the path)
-echo "[$(date)] Enabling nginx configuration..."
-ln -sf /etc/nginx/sites-available/staging /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-
-# Verify nginx config and restart
-echo "[$(date)] Testing nginx configuration..."
-nginx -t
-
-echo "[$(date)] Restarting nginx..."
-systemctl restart nginx
-
 # Clone repositories
 git clone ${var.frontend_repo_url} /opt/kerry/frontend
 git clone ${var.backend_repo_url} /opt/kerry/backend
-
-# Create error messages map
-cat > /etc/nginx/conf.d/error_messages.conf << 'EOL'
-map $status $error_message {
-    400 "Bad request - The server could not understand your request.";
-    401 "Unauthorized - Authentication is required.";
-    403 "Forbidden - You don't have permission to access this resource.";
-    404 "Not Found - The requested resource does not exist.";
-    408 "Request Timeout - The server timed out waiting for the request.";
-    429 "Too Many Requests - Please slow down your requests.";
-    500 "Internal Server Error - Something went wrong on our end.";
-    502 "Bad Gateway - The server received an invalid response.";
-    503 "Service Unavailable - Kerry is experiencing high load.";
-    504 "Gateway Timeout - The server took too long to respond.";
-    default "An unexpected error occurred.";
-}
-EOL
 
 # Create error page
 cat > /var/www/html/error.html << 'HTMLEOF'
@@ -312,19 +242,19 @@ server {
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
     }
 
     location /api {
         proxy_pass http://localhost:8000;  # Backend
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
     }
 }
 
@@ -364,7 +294,7 @@ server {
         limit_req zone=general_limit burst=20;
         
         # Return 404 for all paths except root
-        if ($request_uri != "/") {
+        if (\$request_uri != "/") {
             return 404;
         }
 
