@@ -99,7 +99,7 @@ DOCKEREOF
 
 # Pull the latest frontend image (with error handling)
 echo "[$(date)] Attempting to pull frontend image..."
-if docker pull ${var.registry_url}/-staging:latest; then
+if docker pull ${var.registry_url}/kerry-frontend-staging:latest; then
     echo "[$(date)] Successfully pulled frontend image"
     
     # Create and start the frontend container
