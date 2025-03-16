@@ -11,7 +11,7 @@ terraform {
   backend "s3" {
     bucket                      = "kerry-terraform-state"
     key                         = "terraform.tfstate"
-    region                      = "eu-central-1"
+    region                      = "eu-central"
     endpoints                   = { s3 = "https://nbg1.your-objectstorage.com" }
     use_path_style              = true
     skip_credentials_validation = true
