@@ -4,6 +4,12 @@ variable "hcloud_token" {
   sensitive   = true
 }
 
+variable "environment" {
+  description = "Environment name (e.g., staging, production)"
+  type        = string
+  default     = "staging"  # Default value for the environment
+}
+
 variable "server_name" {
   description = "Name of the server"
   type        = string
