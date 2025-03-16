@@ -117,21 +117,26 @@ echo "[$(date)] Installing nginx..."
 apt-get update
 apt-get install -y nginx
 
-# Wait a moment to ensure nginx service is ready
-sleep 5
+# Configure nginx
+${templatefile("${path.module}/files/configure-nginx.sh", {
+  cloudflare_cert = var.cloudflare_cert,
+  cloudflare_key = var.cloudflare_key,
+  login_html = templatefile("${path.module}/files/login.html", {
+    staging_username = var.staging_username,
+    staging_password = var.staging_password,
+    auth_token = base64encode("${var.staging_username}:${var.staging_password}")
+  })
+})}
 
-# Remove default config
-rm -f /etc/nginx/sites-enabled/default
+# Create error page
+cat > /var/www/html/error.html << 'HTMLEOF'
+${file("${path.module}/files/error.html")}
+HTMLEOF
 
-# Now create SSL directory and set permissions
-echo "[$(date)] Configuring SSL..."
-mkdir -p /etc/nginx/ssl
-chmod 700 /etc/nginx/ssl
-
-# Install SSL certificates
-echo "${var.cloudflare_cert}" > /etc/nginx/ssl/cloudflare.crt
-echo "${var.cloudflare_key}" > /etc/nginx/ssl/cloudflare.key
-chmod 600 /etc/nginx/ssl/cloudflare.key
+# Create necessary directories
+echo "[$(date)] Creating web directories..."
+mkdir -p /var/www/html/staging
+chmod 755 /var/www/html/staging
 
 # Force filesystem sync
 sync
@@ -152,15 +157,6 @@ ${templatefile("${path.module}/files/login.html", {
     staging_password = var.staging_password,
     auth_token = base64encode("${var.staging_username}:${var.staging_password}")
 })}
-HTMLEOF
-
-# Clone repositories
-git clone ${var.frontend_repo_url} /opt/kerry/frontend
-git clone ${var.backend_repo_url} /opt/kerry/backend
-
-# Create error page
-cat > /var/www/html/error.html << 'HTMLEOF'
-${file("${path.module}/files/error.html")}
 HTMLEOF
 
 # Configure Nginx
