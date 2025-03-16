@@ -32,10 +32,6 @@ jobs:
         cat > backend.hcl << EOF
         access_key = "${{ secrets.AWS_ACCESS_KEY_ID }}"
         secret_key = "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-        skip_credentials_validation = true
-        skip_region_validation = true
-        skip_metadata_api_check = true
-        use_path_style = true
         EOF
 
     - name: Remove Local Backend Override
@@ -50,19 +46,6 @@ jobs:
 
     - name: Terraform Format
       run: terraform fmt
-
-    - name: Update Resource Names
-      run: |
-        # Add timestamp to resource names to make them unique
-        TIMESTAMP=$(date +%s)
-        
-        # Update SSH key name
-        sed -i "s/resource \"hcloud_ssh_key\" \"default\"/resource \"hcloud_ssh_key\" \"key_$TIMESTAMP\"/" main.tf
-        sed -i "s/hcloud_ssh_key.default/hcloud_ssh_key.key_$TIMESTAMP/g" main.tf
-        
-        # Update firewall name
-        sed -i "s/resource \"hcloud_firewall\" \"default\"/resource \"hcloud_firewall\" \"fw_$TIMESTAMP\"/" main.tf
-        sed -i "s/hcloud_firewall.default/hcloud_firewall.fw_$TIMESTAMP/g" main.tf
 
     - name: Terraform Plan
       env:
