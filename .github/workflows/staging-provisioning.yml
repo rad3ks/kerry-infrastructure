@@ -87,4 +87,4 @@ jobs:
         TF_VAR_frontend_repo_url: ${{ secrets.FRONTEND_REPO_URL }}
         TF_VAR_backend_repo_url: ${{ secrets.BACKEND_REPO_URL }}
         TF_VAR_frontend_image_tag: ${{ secrets.FRONTEND_IMAGE_TAG }}
-      run: terraform apply -var-file=staging.tfvars -auto-approve -input=false
+      run: terraform apply -auto-approve -input=false
