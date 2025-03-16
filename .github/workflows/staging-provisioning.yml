@@ -30,6 +30,7 @@ jobs:
     - name: Terraform Init
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       run: terraform init
 
     - name: Terraform Format
@@ -38,6 +39,7 @@ jobs:
     - name: Terraform Plan
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
         TF_VAR_environment: staging
         TF_VAR_server_name: "kerry-staging-server"
         TF_VAR_server_type: "cx22"
@@ -60,6 +62,7 @@ jobs:
       if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
         TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
         TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
         TF_VAR_redis_url: ${{ secrets.REDIS_URL }}
