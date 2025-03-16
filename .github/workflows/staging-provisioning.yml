@@ -30,7 +30,7 @@ jobs:
     - name: Terraform Init
       env:
         HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
-      run: terraform init -reconfigure
+      run: terraform init
 
     - name: Terraform Format
       run: terraform fmt
